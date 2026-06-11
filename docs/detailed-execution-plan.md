@@ -72,7 +72,7 @@ coding-agent/
 
 - [x] **P1-W1-T1**: 初始化 Node.js 项目（TypeScript + ES Modules）
 
-  **说明**：`npm init`，安装核心依赖（`typescript`、`@anthropic-ai/sdk`、`vitest`），配置 `tsconfig.json`（`"module": "NodeNext"`、`"moduleResolution": "NodeNext"`），设置 `package.json` scripts（`build`、`dev`、`test`）。
+  **说明**：`npm init`，安装核心依赖（`typescript`、`dotenv`、`vitest`），配置 `tsconfig.json`（`"module": "NodeNext"`、`"moduleResolution": "NodeNext"`），设置 `package.json` scripts（`build`、`dev`、`test`）。LLM 调用走原生 `fetch`，不引入 SDK。
 
   **验收标准**：
   - `npm run build` 成功编译 `src/index.ts` 到 `dist/`
@@ -137,29 +137,29 @@ coding-agent/
 
 - [ ] **P1-W1-T4**: 跑通首次 LLM 调用 — 发送消息、收到文本回复
 
-  **说明**：创建 `src/llm-client.ts`（或直接放在 agent-loop 中），用 Anthropic SDK 发送单条用户消息，获取文本回复。先用最简单的非流式调用，做一个 `sendMessage` 函数。
+  **说明**：创建 `src/llm-client.ts`，用 `fetch` 向方舟（Ark）的 OpenAI 兼容 `POST {baseURL}/chat/completions` 端点发送单条用户消息，获取文本回复。先用最简单的非流式调用，做一个 `sendMessage` 函数（Authorization: Bearer {apiKey}）。
 
   **验收标准**：
-  - 调用 `anthropic.messages.create()` 成功
+  - 调用 `POST {baseURL}/chat/completions` 成功，解析 `choices[0].message.content`
   - 收到文本回复并打印到控制台
   - 传入系统提示词 + 用户消息，返回助手文本回复
-  - 错误处理：API key 无效时给出可读的报错信息
+  - 错误处理：非 2xx 响应 / API key 无效时给出可读的报错信息
   - 手动运行脚本验证：`node dist/index.js "What is 2+2?"` 返回 "4"
 
-  **关键文件**：`src/llm-client.ts`（或暂放在 `src/index.ts` 中）
+  **关键文件**：`src/llm-client.ts`
 
   **预计时间**：2h
 
 ---
 
-- [ ] **P1-W1-T5**: 实现 tool_use 请求解析 — 让模型决定"要不要调工具"
+- [ ] **P1-W1-T5**: 实现 tool_calls 请求解析 — 让模型决定"要不要调工具"
 
-  **说明**：在 LLM 调用中注册工具定义（先只注册一个空工具做测试），让模型返回 `tool_use` 内容块。解析 Anthropic 响应中的 `content` 数组，区分文本块和工具调用块。
+  **说明**：在 LLM 调用中注册工具定义（先只注册一个空工具做测试），让模型在响应中返回 `tool_calls`。解析响应 `choices[0].message.tool_calls` 数组，区分纯文本回复和工具调用，并将每个工具调用的 `function.arguments`（JSON 字符串）解析为 `ParsedToolCall`。
 
   **验收标准**：
   - 定义一个测试工具（如 `echo`，接收 message 参数，返回 message）
-  - 发送"请调用 echo 工具回复 hello"，响应中包含 `tool_use` 块
-  - 正确解析出 tool name 和 input 参数
+  - 发送"请调用 echo 工具回复 hello"，响应 `finish_reason` 为 `tool_calls` 且包含 `tool_calls`
+  - 正确解析出 tool name 和 input（`JSON.parse(function.arguments)`）
   - 日志打印：`[LLM] Model requested tool: echo({ message: "hello" })`
 
   **关键文件**：`src/llm-client.ts`（修改）、`src/types.ts`（修改）
@@ -189,14 +189,14 @@ coding-agent/
     get(name: string): ToolDefinition | undefined;
     getAll(): ToolDefinition[];
     async execute(name: string, input: Record<string, unknown>): Promise<ToolResult>;
-    getToolDefinitions(): AnthropicToolDefinition[];
+    getToolDefinitions(): ToolDefinition[];
   }
   ```
 
   **验收标准**：
   - 注册/获取/列出工具
   - `execute` 调用工具的实际实现
-  - `getToolDefinitions()` 输出符合 Anthropic API 格式的 JSON Schema 数组
+  - `getToolDefinitions()` 输出符合 OpenAI 兼容 API 格式的工具定义数组（`{ type: 'function', function: { name, description, parameters } }`）
   - 未注册工具时报错
   - 单元测试：注册、重复注册报错、执行、列工具
 
@@ -261,7 +261,7 @@ coding-agent/
 
   **验收标准**：
   - 三个工具全部注册
-  - 集成测试：模拟 tool_use 响应，让 registry 执行 read/write/run 并验证结果
+  - 集成测试：模拟 tool_calls 响应，让 registry 执行 read/write/run 并验证结果
   - 模型能在一次对话中选择并调用多个工具
   - `npm test` 全部通过
 
@@ -277,7 +277,7 @@ coding-agent/
 
 - [ ] **P1-W3-T1**: 实现 Agent Loop 主循环
 
-  **说明**：创建 `src/agent-loop.ts`。实现 while 循环：构建消息（系统提示词 + 工具定义 + 用户输入）→ 调用 LLM → 如有 tool_use 则执行 → 结果回喂 → 继续循环 → 模型不调工具时停止。
+  **说明**：创建 `src/agent-loop.ts`。实现 while 循环：构建消息（系统提示词 + 工具定义 + 用户输入）→ 调用 LLM → 如有 tool_calls 则执行 → 结果回喂 → 继续循环 → 模型不调工具时停止。
 
   ```typescript
   export interface AgentResult {
@@ -844,7 +844,7 @@ coding-agent/
   - 正确追加和检索消息
   - Token 估算：约 4 字符/token
   - `getLastN` 返回最近 N 条
-  - 序列化输出与 Anthropic API 兼容
+  - 序列化输出与 OpenAI 兼容（Ark）chat/completions API 兼容
   - 单元测试：追加、检索、token 计数、getLastN
 
   **关键文件**：`src/context/message-history.ts`、`tests/context/message-history.test.ts`
@@ -1219,7 +1219,7 @@ coding-agent/
 
 ## 里程碑
 
-- [ ] **P1 里程碑（W3 末）**：CLI Agent 能通过 tool_use 循环读写文件 — 能自主完成"创建文件并回读验证"
+- [ ] **P1 里程碑（W3 末）**：CLI Agent 能通过 tool_calls 循环读写文件 — 能自主完成"创建文件并回读验证"
 - [ ] **P2 里程碑（W8 末）**：Agent 具备完整 Harness（权限门控 + 安全规则 + 沙箱 + 自验证 + 重试）+ 5 项 eval 基线数据
 - [ ] **P3 里程碑（W11 末）**：Agent 能处理多文件项目（grep/glob 检索 + 上下文压缩 + TodoWrite 规划）+ 10 项 eval 数据
 - [ ] **P4 里程碑（W13 末）**：可对外发布的开源仓库 + 技术文章完成
@@ -1233,7 +1233,7 @@ coding-agent/
 ```
 <!-- 示例如下：
 2026-06-16 | P1-W1-T1 | ✅ 完成 | 项目初始化完成，全部 scripts 正常运行
-2026-06-17 | P1-W1-T2 | ✅ 完成 | 类型定义完成，对齐 Anthropic SDK 类型
+2026-06-17 | P1-W1-T2 | ✅ 完成 | 类型定义完成，对齐 OpenAI 兼容（Ark）线格式
 2026-06-18 | P1-W1-T3 | 🚧 进行中 | 配置加载器实现中
 2026-06-20 | P1-W1-T3 | ✅ 完成 | 配置加载器完成，含校验
 -->
@@ -1247,7 +1247,7 @@ coding-agent/
 
 | 决策 | 选择 | 理由 |
 |------|------|------|
-| LLM 提供商 | Anthropic (Claude) | tool_use 支持最好，原生 JSON Schema 工具 |
+| LLM 提供商 | 火山引擎方舟 (Ark, OpenAI 兼容) | 国内可用、OpenAI 兼容 tool_calls，手写 fetch 客户端零 SDK 依赖 |
 | 模块系统 | ES Modules (NodeNext) | 现代标准，支持 top-level await |
 | 测试框架 | Vitest | 快、ESM 原生、与 TS 兼容 |
 | CLI 交互 | Node readline | 零依赖，学习项目够用 |
@@ -1265,14 +1265,13 @@ coding-agent/
 ```json
 {
   "dependencies": {
-    "@anthropic-ai/sdk": "^0.30.0",
-    "dotenv": "^16.4.0",
+    "dotenv": "^17.4.2",
     "fast-glob": "^3.3.0"
   },
   "devDependencies": {
-    "typescript": "^5.5.0",
-    "vitest": "^2.0.0",
-    "@types/node": "^20.0.0"
+    "typescript": "^6.0.3",
+    "vitest": "^4.1.8",
+    "@types/node": "^25.9.3"
   }
 }
 ```
