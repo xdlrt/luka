@@ -1,7 +1,7 @@
 # Q3 Detailed Execution Plan — Minimal Coding Agent
 
 > **项目**：从零用 TypeScript 手写最小 Coding Agent，对标 Claude Code 核心架构
-> **技术栈**：TypeScript (ES Modules), Anthropic SDK, Vitest, Node.js CLI
+> **技术栈**：TypeScript (ES Modules), 手写 OpenAI 兼容 HTTP 客户端（火山引擎方舟 / Ark），Vitest, Node.js CLI
 
 ---
 
@@ -12,6 +12,7 @@ coding-agent/
 ├── src/
 │   ├── index.ts                  # CLI 入口（readline REPL）
 │   ├── agent-loop.ts             # 主 Agentic 循环
+│   ├── llm-client.ts             # OpenAI 兼容 HTTP 客户端（Ark chat/completions）
 │   ├── config.ts                 # 配置管理（API key、模型、限制）
 │   ├── types.ts                  # 共享类型定义
 │   ├── logger.ts                 # 日志系统
@@ -85,15 +86,18 @@ coding-agent/
 
 ---
 
-- [ ] **P1-W1-T2**: 定义核心类型接口
+- [x] **P1-W1-T2**: 定义核心类型接口
 
-  **说明**：在 `src/types.ts` 中定义项目中全部模块共用的类型，包括 Message、ToolCall、ToolResult、AgentConfig 等。对齐 Anthropic SDK 类型体系。
+  **说明**：在 `src/types.ts` 中定义项目中全部模块共用的类型，包括 Message、ToolCall、ToolResult、ChatCompletionRequest/Response 等。对齐 OpenAI 兼容（方舟 Ark）chat/completions 线格式。
 
   **验收标准**：
-  - 定义 `Message`：`{ role: 'user' | 'assistant', content: string | ContentBlock[] }`
-  - 定义 `ToolCall`：`{ id: string, name: string, input: Record<string, unknown> }`
+  - 定义 `Role`：`'system' | 'user' | 'assistant' | 'tool'`
+  - 定义 `Message`：`{ role: Role, content: string | null, tool_calls?: ToolCall[], tool_call_id?: string }`
+  - 定义 `ToolCall`：`{ id: string, type: 'function', function: { name: string, arguments: string } }`（arguments 为 JSON 字符串）
+  - 定义 `ParsedToolCall`：`{ id: string, name: string, input: Record<string, unknown> }`（解析后的形态）
   - 定义 `ToolResult`：`{ tool_call_id: string, output: string, error?: string }`
-  - 定义 `AgentConfig`：包含 model、maxTurns 等字段
+  - 定义 `ToolDefinition`：`{ type: 'function', function: { name, description, parameters } }`
+  - 定义 `ChatCompletionRequest` / `ChatCompletionResponse` / `Usage` / `FinishReason`
   - 所有类型导出，TypeScript 编译无报错
 
   **关键文件**：`src/types.ts`
@@ -1233,6 +1237,7 @@ coding-agent/
 2026-06-18 | P1-W1-T3 | 🚧 进行中 | 配置加载器实现中
 2026-06-20 | P1-W1-T3 | ✅ 完成 | 配置加载器完成，含校验
 -->
+2026-06-11 | P1-W1-T2 | ✅ 完成 | 手写 OpenAI 兼容线格式类型，对齐 Ark 端点，移除 SDK 依赖
 2026-06-11 | P1-W1-T3 | ✅ 完成 | 配置加载器完成，适配方舟 OpenAI 兼容 API（ARK_API_KEY/ARK_MODEL/BASE_URL），6 条单测通过
 ```
 
