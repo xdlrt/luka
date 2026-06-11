@@ -104,13 +104,14 @@ coding-agent/
 
 ---
 
-- [ ] **P1-W1-T3**: 实现配置加载模块
+- [x] **P1-W1-T3**: 实现配置加载模块
 
-  **说明**：创建 `src/config.ts`，从环境变量（`.env` 文件，使用 `dotenv`）加载 API key、模型名称，并提供默认值。加入基本校验（API key 为空时报错）。
+  **说明**：创建 `src/config.ts`，从环境变量（`.env` 文件，使用 `dotenv`）加载 API key、模型名称、baseURL，并提供默认值。加入基本校验（API key / model 为空时报错）。**适配 OpenAI 兼容的火山引擎方舟 API**：key 读 `ARK_API_KEY`，model 读 `ARK_MODEL`，baseURL 读 `BASE_URL`（默认 `https://ark.cn-beijing.volces.com/api/v3`）。
 
   ```typescript
   export interface AppConfig {
     apiKey: string;
+    baseURL: string;
     model: string;
     maxTurns: number;
     workingDirectory: string;
@@ -119,10 +120,12 @@ coding-agent/
   ```
 
   **验收标准**：
-  - 从 `ANTHROPIC_API_KEY` 环境变量读取 API key
-  - 提供合理默认值：model = `claude-sonnet-4-20250514`，maxTurns = 20
-  - API key 为空时抛出明确错误
-  - 单元测试：默认值、环境变量覆盖、缺少 API key
+  - 从 `ARK_API_KEY` 环境变量读取 API key
+  - 从 `ARK_MODEL` 读取模型名（必填，无默认值，因 Anthropic 模型名在方舟不可用）
+  - 从 `BASE_URL` 读取，默认 `https://ark.cn-beijing.volces.com/api/v3`；maxTurns 默认 20
+  - API key / model 为空时抛出明确错误
+  - 优先级：overrides > env > default
+  - 单元测试：默认值、环境变量覆盖、缺少 API key、缺少 model、非法 MAX_TURNS、overrides 优先
 
   **关键文件**：`src/config.ts`、`tests/config.test.ts`
 
@@ -1253,6 +1256,7 @@ coding-agent/
 2026-06-18 | P1-W1-T3 | 🚧 进行中 | 配置加载器实现中
 2026-06-20 | P1-W1-T3 | ✅ 完成 | 配置加载器完成，含校验
 -->
+2026-06-11 | P1-W1-T3 | ✅ 完成 | 配置加载器完成，适配方舟 OpenAI 兼容 API（ARK_API_KEY/ARK_MODEL/BASE_URL），6 条单测通过
 ```
 
 ---
