@@ -154,7 +154,7 @@ coding-agent/
 
 ---
 
-- [ ] **P1-W1-T5**: 实现 tool_calls 请求解析 — 让模型决定"要不要调工具"
+- [x] **P1-W1-T5**: 实现 tool_calls 请求解析 — 让模型决定"要不要调工具"
 
   **说明**：在 LLM 调用中注册工具定义（先只注册一个空工具做测试），让模型在响应中返回 `tool_calls`。解析响应 `choices[0].message.tool_calls` 数组，区分纯文本回复和工具调用，并将每个工具调用的 `function.arguments`（JSON 字符串）解析为 `ParsedToolCall`。
 
