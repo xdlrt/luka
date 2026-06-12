@@ -1,0 +1,81 @@
+import type { AppConfig } from "./config.js";
+import { LLMClient, parseResponse } from "./llm-client.js";
+import type { ToolRegistry } from "./tools/index.js";
+import type { Message } from "./types.js";
+
+const SYSTEM_PROMPT =
+  "你是一个 Coding Agent，帮助用户编写和修改代码。优先使用工具获取信息，不要凭空猜测文件内容。不要执行破坏性操作。";
+
+export interface AgentResult {
+  finalMessage: string;
+  turnsUsed: number;
+  toolsCalled: string[];
+  success: boolean;
+}
+
+export async function runAgentLoop(
+  userInput: string,
+  config: AppConfig,
+  tools: ToolRegistry,
+  client: LLMClient = new LLMClient(config)
+): Promise<AgentResult> {
+  const messages: Message[] = [
+    { role: "system", content: SYSTEM_PROMPT },
+    { role: "user", content: userInput },
+  ];
+  const toolsCalled: string[] = [];
+  const toolDefinitions = tools.getToolDefinitions();
+
+  let lastText = "";
+
+  for (let turn = 1; turn <= config.maxTurns; turn++) {
+    console.log(`[Agent] Turn ${turn}/${config.maxTurns}`);
+    const response = await client.sendMessage(messages, {
+      tools: toolDefinitions,
+    });
+    const assistantMessage = response.choices[0]?.message;
+    if (assistantMessage !== undefined) {
+      messages.push(assistantMessage);
+    }
+
+    const parsed = parseResponse(response);
+    lastText = parsed.text ?? "";
+
+    if (parsed.toolCalls.length === 0) {
+      console.log(`[Agent] No tool calls; finishing at turn ${turn}`);
+      return {
+        finalMessage: lastText,
+        turnsUsed: turn,
+        toolsCalled,
+        success: true,
+      };
+    }
+
+    for (const call of parsed.toolCalls) {
+      toolsCalled.push(call.name);
+      let content: string;
+      try {
+        const result = await tools.execute(call.name, call.input);
+        content = result.error
+          ? `${result.output}\n[error] ${result.error}`
+          : result.output;
+      } catch (error) {
+        const message = error instanceof Error ? error.message : String(error);
+        content = `[error] ${message}`;
+      }
+      messages.push({
+        role: "tool",
+        tool_call_id: call.id,
+        content,
+      });
+    }
+  }
+
+  console.log(`[Agent] Reached maxTurns=${config.maxTurns}; stopping`);
+  return {
+    finalMessage: lastText,
+    turnsUsed: config.maxTurns,
+    toolsCalled,
+    success: false,
+  };
+}

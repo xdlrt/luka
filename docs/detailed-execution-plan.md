@@ -275,7 +275,7 @@ coding-agent/
 
 ---
 
-- [ ] **P1-W3-T1**: 实现 Agent Loop 主循环
+- [x] **P1-W3-T1**: 实现 Agent Loop 主循环
 
   **说明**：创建 `src/agent-loop.ts`。实现 while 循环：构建消息（系统提示词 + 工具定义 + 用户输入）→ 调用 LLM → 如有 tool_calls 则执行 → 结果回喂 → 继续循环 → 模型不调工具时停止。
 
