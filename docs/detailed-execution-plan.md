@@ -208,7 +208,7 @@ coding-agent/
 
 ---
 
-- [ ] **P1-W2-T2**: 实现 `read_file` 工具
+- [x] **P1-W2-T2**: 实现 `read_file` 工具
 
   **说明**：创建 `src/tools/read-file.ts`。参数 `path`（string，必填）。读取文件内容并返回。用 `fs/promises.readFile`，utf-8 编码。
 
