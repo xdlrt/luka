@@ -1,5 +1,8 @@
 import type { ToolDefinition as ChatToolDefinition, ToolResult } from "../types.js";
+import { createReadFileTool } from "./read-file.js";
+import { createRunCommandTool } from "./run-command.js";
 import type { ToolDefinition } from "./types.js";
+import { createWriteFileTool } from "./write-file.js";
 
 export type { ToolCategory, ToolDefinition } from "./types.js";
 
@@ -42,4 +45,14 @@ export class ToolRegistry {
       },
     }));
   }
+}
+
+export function createDefaultToolRegistry(
+  workingDirectory: string
+): ToolRegistry {
+  const registry = new ToolRegistry();
+  registry.register(createReadFileTool(workingDirectory));
+  registry.register(createWriteFileTool(workingDirectory));
+  registry.register(createRunCommandTool(workingDirectory));
+  return registry;
 }
