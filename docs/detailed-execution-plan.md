@@ -323,7 +323,7 @@ coding-agent/
 
 ---
 
-- [ ] **P1-W3-T3**: 实现 CLI 入口 — readline REPL
+- [x] **P1-W3-T3**: 实现 CLI 入口 — readline REPL
 
   **说明**：修改 `src/index.ts`，用 Node.js `readline` 模块实现交互式 REPL。用户可以逐行输入需求，Agent 执行并输出结果。支持 `.exit` 退出。
 
