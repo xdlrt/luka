@@ -1,9 +1,8 @@
 import { loadConfig } from "./config.js";
+import { SYSTEM_PROMPT } from "./context/system-prompt.js";
 import { LLMClient, parseResponse } from "./llm-client.js";
 import { createDefaultToolRegistry } from "./tools/index.js";
 import type { Message } from "./types.js";
-
-const SYSTEM_PROMPT = "You are a helpful assistant. Answer concisely.";
 
 async function main(): Promise<void> {
   console.log("[CLI] Starting coding-agent demo");

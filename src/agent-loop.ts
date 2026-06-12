@@ -1,10 +1,8 @@
 import type { AppConfig } from "./config.js";
+import { SYSTEM_PROMPT } from "./context/system-prompt.js";
 import { LLMClient, parseResponse } from "./llm-client.js";
 import type { ToolRegistry } from "./tools/index.js";
 import type { Message } from "./types.js";
-
-const SYSTEM_PROMPT =
-  "你是一个 Coding Agent，帮助用户编写和修改代码。优先使用工具获取信息，不要凭空猜测文件内容。不要执行破坏性操作。";
 
 export interface AgentResult {
   finalMessage: string;

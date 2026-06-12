@@ -308,7 +308,7 @@ coding-agent/
 
 ---
 
-- [ ] **P1-W3-T2**: 实现 System Prompt 基线
+- [x] **P1-W3-T2**: 实现 System Prompt 基线
 
   **说明**：创建 `src/context/system-prompt.ts`。组装系统提示词：角色定义、工具使用说明、行为约束。初版提示词简洁，控制在 800 词以内。
 
