@@ -342,7 +342,7 @@ coding-agent/
 
 ---
 
-- [ ] **P1-W3-T4**: 端到端 demo — Agent 自己读写文件改代码
+- [x] **P1-W3-T4**: 端到端 demo — Agent 自己读写文件改代码
 
   **说明**：第一个完整的集成测试。用临时目录创建一个小项目，给 Agent 一个简单需求（如"在 src/greet.ts 中创建一个函数 greet(name) 返回 Hello, name!"），Agent 需要自己写文件、读文件验证。
 
