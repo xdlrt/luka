@@ -257,7 +257,7 @@ coding-agent/
 
 ---
 
-- [ ] **P1-W2-T5**: 将所有工具注册到 ToolRegistry 并写集成测试
+- [x] **P1-W2-T5**: 将所有工具注册到 ToolRegistry 并写集成测试
 
   **说明**：在 `src/index.ts`（或初始化脚本）中将 read_file、write_file、run_command 注册到 ToolRegistry。写一条集成测试：让模型调用所有工具并验证结果。
 
