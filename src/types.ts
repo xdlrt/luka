@@ -63,4 +63,10 @@ export interface ToolResult {
   error?: string;
 }
 
+export interface ParsedResponse {
+  text: string | null;
+  toolCalls: ParsedToolCall[];
+  finishReason: FinishReason | null;
+}
+
 export type { AppConfig } from "./config.js";

@@ -1,5 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { LLMClient } from "../src/llm-client.js";
+import { LLMClient, parseResponse } from "../src/llm-client.js";
+import { echoTool } from "../src/tools/echo.js";
 import type { AppConfig } from "../src/config.js";
 import type { ChatCompletionResponse } from "../src/types.js";
 
@@ -116,6 +117,91 @@ describe("LLMClient", () => {
     const client = new LLMClient(baseConfig);
     await expect(client.chat("system", "hi")).rejects.toThrow(
       /missing message content/
+    );
+  });
+
+  it("includes tools in the request body when provided", async () => {
+    fetchMock.mockResolvedValue(jsonResponse(sampleResponse));
+
+    const client = new LLMClient(baseConfig);
+    await client.sendMessage(
+      [{ role: "user", content: "hi" }],
+      { tools: [echoTool] }
+    );
+
+    const [, init] = fetchMock.mock.calls[0] as [string, RequestInit];
+    const body = JSON.parse(init.body as string);
+    expect(body.tools).toEqual([echoTool]);
+  });
+});
+
+describe("parseResponse", () => {
+  function toolCallResponse(args: string): ChatCompletionResponse {
+    return {
+      id: "resp-tool",
+      model: "doubao-test",
+      choices: [
+        {
+          index: 0,
+          message: {
+            role: "assistant",
+            content: null,
+            tool_calls: [
+              {
+                id: "call-1",
+                type: "function",
+                function: { name: "echo", arguments: args },
+              },
+            ],
+          },
+          finish_reason: "tool_calls",
+        },
+      ],
+      usage: { prompt_tokens: 10, completion_tokens: 5, total_tokens: 15 },
+    };
+  }
+
+  afterEach(() => {
+    vi.restoreAllMocks();
+  });
+
+  it("parses a tool call into name and input", () => {
+    const logSpy = vi.spyOn(console, "log").mockImplementation(() => {});
+    const parsed = parseResponse(
+      toolCallResponse(JSON.stringify({ message: "hello" }))
+    );
+
+    expect(parsed.finishReason).toBe("tool_calls");
+    expect(parsed.text).toBeNull();
+    expect(parsed.toolCalls).toEqual([
+      { id: "call-1", name: "echo", input: { message: "hello" } },
+    ]);
+    expect(logSpy).toHaveBeenCalledWith(
+      '[LLM] Model requested tool: echo({"message":"hello"})'
+    );
+  });
+
+  it("returns text with no tool calls for a plain reply", () => {
+    const parsed = parseResponse(sampleResponse);
+
+    expect(parsed.text).toBe("4");
+    expect(parsed.finishReason).toBe("stop");
+    expect(parsed.toolCalls).toEqual([]);
+  });
+
+  it("treats empty arguments string as an empty input object", () => {
+    vi.spyOn(console, "log").mockImplementation(() => {});
+    const parsed = parseResponse(toolCallResponse(""));
+
+    expect(parsed.toolCalls).toEqual([
+      { id: "call-1", name: "echo", input: {} },
+    ]);
+  });
+
+  it("throws a readable error on invalid tool arguments JSON", () => {
+    vi.spyOn(console, "log").mockImplementation(() => {});
+    expect(() => parseResponse(toolCallResponse("{not json"))).toThrow(
+      /Failed to parse tool arguments for "echo"/
     );
   });
 });
