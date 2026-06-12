@@ -224,7 +224,7 @@ coding-agent/
 
 ---
 
-- [ ] **P1-W2-T3**: 实现 `write_file` 工具
+- [x] **P1-W2-T3**: 实现 `write_file` 工具
 
   **说明**：创建 `src/tools/write-file.ts`。参数 `path`（string）、`content`（string），均为必填。写入文件内容，如果目录不存在则自动创建。
 
