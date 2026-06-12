@@ -2,139 +2,140 @@
 
 ## 交流语言
 
-与用户交流时，必须使用中文。所有回复、解释、确认信息均使用中文输出。
+必须使用中文与用户交流。所有回复、解释、确认信息均必须使用中文输出。
 
-## 项目概述
+## 项目边界
 
-一个从零开始用 TypeScript 构建的极简编码代理（coding agent），架构参考 Claude Code 的核心设计。代理实现了一个智能循环：收集上下文、通过工具执行操作、验证结果、循环往复直到任务完成。
+这是一个极简 coding agent。当前真实能力是 P1 最小闭环：CLI/REPL 接收用户输入，Agent Loop 调用 OpenAI-compatible `chat/completions`，解析模型返回的 `tool_calls`，通过 `ToolRegistry` 执行工具，并把工具结果回传给模型。
 
-**当前状态**：早期开发阶段。已完成：配置加载器（`src/config.ts`）、核心类型定义（`src/types.ts`）、LLM 客户端（`src/llm-client.ts`，OpenAI 兼容 `chat/completions` 调用）、可运行的 CLI 入口（`src/index.ts`）、配置与 LLM 客户端单元测试（`tests/config.test.ts`、`tests/llm-client.test.ts`）。规划的架构包含 6 个模块：
+- 当前默认工具只有 `read_file`、`write_file`、`run_command`。
+- 当前只有固定系统提示词；尚未实现消息历史压缩、上下文裁剪、检索增强。
+- 当前没有统一 Harness；尚未实现写前确认、危险命令黑名单、命令规则引擎、自动测试、自修复重试。
+- 当前没有 `edit_file`、`grep`、`glob`、`todo_write`。
 
-1. **Agent Loop（代理循环）** — 主 while 循环：构建消息、调用 LLM、执行工具、将结果回传、当模型不再请求工具调用时停止。
-2. **Tool Layer（工具层）** — read_file、write_file、edit_file、run_command、grep、glob、todo_write，带有 JSON Schema 定义和 ToolRegistry 调度器。
-3. **Context & History（上下文与历史）** — 系统提示词组装、消息历史管理、token 数超过阈值时基于 LLM 的压缩。
-4. **Permissions & Safety Harness（权限与安全护栏）** — 工具分类（read/write/command）、写前确认、危险命令黑名单、沙箱边界强制执行。
-5. **Planning / TODO（规划/待办）** — TodoWrite 风格的结构化任务追踪、任务分解提示词。
-6. **Self-Verification（自验证）** — 编辑后自动运行测试、解析结果、带最大重试次数的重试循环。
+禁止在代码、文档、提示词或 CLI 输出中暗示未实现能力已经存在。尤其禁止声称当前已有写前确认、危险命令拦截、完整沙箱、自验证修复或 TodoWrite。
 
-**技术栈**：TypeScript（ES Modules）、OpenAI 兼容 API（Volcengine Ark，通过原生 `fetch` 调用，无第三方 LLM SDK 依赖）、`dotenv`（加载环境变量）、Vitest、Node.js CLI（readline REPL）。
+## 强约束
 
-## 构建与命令
+### 工具协议
 
-```bash
-# 安装依赖
-npm install
+- `src/types.ts` 必须只表达 LLM API 消息协议和 OpenAI-compatible 工具 schema。
+- `src/tools/types.ts` 必须表达运行时工具协议，包含 `execute(input)` 和可选 `category`。
+- `ToolRegistry.getToolDefinitions()` 必须只导出 `{ type: "function", function: { name, description, parameters } }`。
+- `ToolRegistry.getToolDefinitions()` 禁止泄露 `execute`、`category` 或任何运行时字段给模型。
+- 工具执行后的 `role: "tool"` 消息必须使用模型返回的真实 `tool_call.id` 作为 `tool_call_id`。
+- 禁止使用工具实现里固定的 `tool_call_id` 作为回传消息的 `tool_call_id`。
+- 工具参数解析失败必须显式报错，禁止静默改写为 `{}` 或吞掉错误。
 
-# 编译 TypeScript 到 dist/
-npm run build
+### Agent Loop
 
-# 监听模式（文件变化时自动重新编译）
-npm run dev
+- 当模型回复没有 tool calls 时，Agent Loop 必须停止并返回成功。
+- 当达到 `maxTurns` 时，Agent Loop 必须停止并返回 `success: false`。
+- 工具执行异常必须转成 tool 消息回传给模型，禁止让单个工具异常直接中断整个循环，除非是协议级不可恢复错误。
+- 当前没有 Harness 时，Agent Loop 可以直接调用 `ToolRegistry`。
+- 一旦引入 Harness，Agent Loop 必须只通过 Harness 执行工具，禁止绕过 Harness 直接调用 `ToolRegistry.execute()`。
 
-# 运行测试
-npm test          # 等同于: vitest run
-```
+### 安全状态
 
-- 入口文件：`src/index.ts` 编译为 `dist/index.js`（可运行：`node dist/index.js "你的问题"`）
-- 需要 Node.js >= 20.0.0
-- 模块系统：ES Modules（package.json 中 `"type": "module"`）
+- `read_file` / `write_file` 当前必须只接受非空相对路径，必须拒绝绝对路径和包含 `..` 的路径片段。
+- `read_file` 必须拒绝二进制文件。
+- `write_file` 当前会覆盖已有文件；在写前确认实现前，禁止把它描述成安全写入。
+- `run_command` 当前只有 `cwd` 和超时保护；禁止把它描述成已具备危险命令拦截。
+- 任何权限、安全、命令执行相关改动，必须补拒绝路径、失败命令或拦截规则测试。
 
-## 代码风格
+### 配置与 CLI
 
-### TypeScript 配置
+- `ARK_API_KEY` 和 `ARK_MODEL` 必须保持必填，禁止引入静默默认模型。
+- `MAX_TURNS` 必须保持正整数校验。
+- 新增配置字段必须同时覆盖：override 优先级、环境变量读取、非法值、默认值。
+- 新增 CLI flag 必须接入配置或执行路径，并补 CLI 输入处理测试；禁止只更新帮助文案。
 
-- **Target**：ES2022
-- **Module**：NodeNext（使用 NodeNext 解析）
-- **严格模式**：开启（所有严格检查）
-- **verbatimModuleSyntax**：开启 — 类型导入使用 `import type`
-- **isolatedModules**：开启 — 每个文件必须可独立转译
-- **声明文件**：生成（`declaration: true`）
-- **Source maps**：生成
+### Commit 复盘
 
-### 编码约定
+- 每次创建 commit 后，必须在 `docs/commit-notes.md` 追加本次 commit 的 Why / What / How。
+- 记录必须包含 `commit`、`Why`、`What`、`How` 四项；`commit` 使用短 hash 或 commit 标题。
+- `Why` 必须记录本次改动的问题背景、目标或取舍。
+- `What` 必须记录行为变化和架构边界变化，禁止只复述文件 diff。
+- `How` 必须记录关键实现路径、测试方式、踩坑点或反直觉点。
+- 记录必须服务最终技术文章和分享，必须沉淀可复用的设计理由、错误范式或验证证据。
+- 禁止写成流水账；禁止使用“更新代码”“修复问题”“通过测试”这类无信息量描述。
 
-- 全部使用 ES Modules — 导入路径使用 `.js` 扩展名（TypeScript NodeNext 解析要求）
-- 源代码中禁止使用 `any` 类型
-- 禁止未使用的导入或死代码
-- 导出的函数/类使用 JSDoc 文档注释（待实现成熟后）
-- 命名规范：变量/函数使用 camelCase，类/接口/类型使用 PascalCase
-- 文件命名：kebab-case（如 `agent-loop.ts`、`read-file.ts`、`tool-registry.ts`）
+## 开发范式
 
-### 架构模式
+### 新增工具
 
-- **ToolDefinition 接口**：采用 OpenAI 工具 schema 形态 `{ type: "function", function: { name, description, parameters } }`（见 `src/types.ts`）。运行时的 `execute` 函数与 `category`（read/write/command）作为独立的工具注册/调度概念，尚未在类型中体现，属规划中。
-- **Harness 作为唯一控制层**：Agent Loop 仅与 Harness 交互；Harness 内部编排沙箱检查、规则检查和权限确认
-- **工具结果作为消息回传**：工具执行后，结果作为对话历史的一部分供下次 LLM 调用使用
-- **停止条件**：当模型回复不包含任何工具调用时循环结束，或达到 maxTurns 上限
+正例：
 
-## 测试
+- 新增独立工具文件，返回运行时 `ToolDefinition`。
+- 提供 JSON Schema 参数定义、`category`、输入校验和错误结果。
+- 在默认注册表中注册，并补工具单测和 registry 集成测试。
+- 测试必须覆盖 OpenAI-compatible schema 不包含运行时字段。
 
-- **框架**：Vitest 4.x
-- **测试位置**：`tests/**/*.test.ts`
-- **环境**：Node
-- **配置文件**：`vitest.config.ts`
-- **通过策略**：`passWithNoTests: true`（项目处于早期脚手架阶段）
+反例：
 
-### 测试目录结构（规划中）
+- 只实现函数但不注册到默认工具集。
+- 让模型看到 `execute` 或 `category`。
+- 只测成功路径，不测缺参、非法参数、运行时失败。
+- 在工具里直接读环境变量或绕过 `workingDirectory`。
 
-```
-tests/
-├── tools/              # 每个工具的单元测试
-├── permissions/        # 权限/沙箱/规则测试
-├── context/            # 系统提示词、消息历史、压缩器
-├── planning/           # 待办管理器、任务分解器
-├── verification/       # 测试运行器、结果格式化、重试
-└── integration/        # 端到端代理循环场景
-```
+### 修改 Agent Loop
 
-### 运行测试
+正例：
 
-```bash
-npm test              # 运行所有测试（一次）
-npx vitest           # 监听模式（交互式）
-npx vitest run --reporter=verbose  # 详细输出
-```
+- 保持 tool call -> tool execution -> tool message -> next LLM call 的消息链路。
+- 覆盖无工具调用、多轮工具调用、多工具调用、工具错误、`maxTurns`。
+- 断言回传消息使用模型返回的 tool call id。
 
-## 安全性
+反例：
 
-- **沙箱边界**：所有文件操作（读/写）限制在配置的 `workingDirectory` 内。路径经过解析和前缀检查；`..` 遍历和超出边界的绝对路径会被拒绝。
-- **危险命令黑名单**：基于正则的规则阻止 `rm -rf`、`curl`/`wget` 访问外部、`git push --force`、`sudo`、写入系统路径（`/etc`、`/usr`、`/var`）、`chmod 777`。
-- **写入确认**：写入/命令类工具执行前需要用户明确确认（`y/n`），除非设置了 `--auto-approve` 标志。
-- **API 密钥处理**：从 `ARK_API_KEY` 环境变量加载。`.env` 和 `.env.local` 已加入 gitignore，可参考 `.env.example` 模板。绝不提交密钥。
-- **最大重试次数**：自验证重试循环上限为 3 次，防止无限循环。
-- **工具分类**：`read`（无需确认）、`write`（需要确认）、`command`（需要确认 + 规则检查）。
+- 把工具结果塞进 assistant 消息。
+- 丢弃工具错误，只把 stdout 回传。
+- 在循环里硬编码具体工具名。
+- 达到 `maxTurns` 后仍继续请求模型。
 
-## 配置
+### 实现 Harness
 
-### 环境变量
+正例：
 
-| 变量 | 必需 | 默认值 | 说明 |
-|------|------|--------|------|
-| `ARK_API_KEY` | 是 | — | 访问 Volcengine Ark（OpenAI 兼容）的 API 密钥 |
-| `ARK_MODEL` | 是 | — | 使用的模型 ID |
-| `BASE_URL` | 否 | `https://ark.cn-beijing.volces.com/api/v3` | API base URL |
-| `MAX_TURNS` | 否 | `20` | 代理循环最大迭代次数（正整数） |
+- 先定义 Harness 的最小接口，再让 Agent Loop 依赖 Harness。
+- 权限确认、危险命令规则、沙箱边界、自验证必须集中在 Harness 内编排。
+- 每条拒绝规则必须有测试证明会被拒绝，并证明正常命令不被误伤。
 
-### AppConfig（src/config.ts — 已实现）
+反例：
 
-`loadConfig(overrides?)` 加载 `.env` 并按「overrides > 环境变量 > 默认值」优先级解析配置。
+- 在各个工具里分散实现权限确认。
+- 在 Agent Loop 中直接写危险命令黑名单。
+- 只在系统提示词里要求模型不要做危险操作，却没有代码级拦截。
+- 引入 Harness 后仍保留绕过 Harness 的工具执行路径。
 
-| 字段 | 默认值 | 说明 |
-|------|--------|------|
-| `apiKey` | — （必需） | 来自 `ARK_API_KEY` |
-| `model` | — （必需） | 来自 `ARK_MODEL` |
-| `baseURL` | `https://ark.cn-beijing.volces.com/api/v3` | 来自 `BASE_URL` |
-| `maxTurns` | 20 | 来自 `MAX_TURNS` |
-| `workingDirectory` | CWD | 文件操作的沙箱根目录 |
+### 更新文档或提示词
 
-#### 规划中字段（尚未实现）
+正例：
 
-| 字段 | 默认值 | 说明 |
-|------|--------|------|
-| `autoApprove` | false | 跳过写入/命令操作的确认 |
-| `testCommand` | — | 用于自验证的运行命令 |
+- 文档必须区分“当前已实现”和“规划中”。
+- 修改系统提示词必须补测试，至少证明关键安全边界和工具使用原则仍存在。
+- README、AGENTS、docs 中的能力描述必须与源码和测试一致。
+- commit 后必须同步追加 `docs/commit-notes.md`，记录 Why / What / How。
 
-### CLI 标志（规划中）
+反例：
 
-- `--auto-approve` / `-y`：自动批准所有写入/命令操作
-- 标准输入：交互式 readline REPL，提示符为 `> `；输入 `.exit` 或按 Ctrl+C 退出
+- 为了路线图好看，把未实现能力写成已完成。
+- 只更新文档，不更新对应测试或代码边界。
+- 只提交代码，不记录决策背景，导致后续无法复盘。
+- 在 AGENTS.md 中堆目录树、接口清单、语言常识，稀释项目特有约束。
+
+## 验证要求
+
+- 修改配置加载：必须跑 `tests/config.test.ts`。
+- 修改 LLM 请求、响应解析或 tool call 协议：必须跑 `tests/llm-client.test.ts` 和 `tests/agent-loop.test.ts`。
+- 修改 Agent Loop：必须跑 `tests/agent-loop.test.ts` 和 `tests/integration/p1-end-to-end.test.ts`。
+- 修改工具：必须跑对应 `tests/tools/*.test.ts` 和 `tests/tools/registry-integration.test.ts`。
+- 修改 CLI 输入处理：必须跑 `tests/index.test.ts`。
+- 合并前必须跑 `npm run build` 和 `npm test`。
+
+## 代码底线
+
+- 禁止使用 `any`。
+- 禁止未使用导入和死代码。
+- 源码导入本项目 TS 模块时必须使用 `.js` 扩展名。
+- 禁止提交密钥、`.env` 或任何真实凭证。
