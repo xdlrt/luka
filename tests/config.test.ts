@@ -1,4 +1,7 @@
-import { afterEach, beforeEach, describe, expect, it } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+
+vi.mock("dotenv", () => ({ config: () => ({ parsed: {} }) }));
+
 import { loadConfig } from "../src/config.js";
 
 const ENV_KEYS = ["ARK_API_KEY", "ARK_MODEL", "BASE_URL", "MAX_TURNS"] as const;
