@@ -8,7 +8,7 @@
 
 一个从零开始用 TypeScript 构建的极简编码代理（coding agent），架构参考 Claude Code 的核心设计。代理实现了一个智能循环：收集上下文、通过工具执行操作、验证结果、循环往复直到任务完成。
 
-**当前状态**：早期初始化阶段（仅有脚手架）。`src/index.ts` 目前是桩代码。规划的架构包含 6 个模块：
+**当前状态**：早期开发阶段。已完成：配置加载器（`src/config.ts`）、核心类型定义（`src/types.ts`）、LLM 客户端（`src/llm-client.ts`，OpenAI 兼容 `chat/completions` 调用）、可运行的 CLI 入口（`src/index.ts`）、配置与 LLM 客户端单元测试（`tests/config.test.ts`、`tests/llm-client.test.ts`）。规划的架构包含 6 个模块：
 
 1. **Agent Loop（代理循环）** — 主 while 循环：构建消息、调用 LLM、执行工具、将结果回传、当模型不再请求工具调用时停止。
 2. **Tool Layer（工具层）** — read_file、write_file、edit_file、run_command、grep、glob、todo_write，带有 JSON Schema 定义和 ToolRegistry 调度器。
@@ -17,7 +17,7 @@
 5. **Planning / TODO（规划/待办）** — TodoWrite 风格的结构化任务追踪、任务分解提示词。
 6. **Self-Verification（自验证）** — 编辑后自动运行测试、解析结果、带最大重试次数的重试循环。
 
-**技术栈**：TypeScript（ES Modules）、Anthropic SDK（`@anthropic-ai/sdk`）、Vitest、Node.js CLI（readline REPL）。
+**技术栈**：TypeScript（ES Modules）、OpenAI 兼容 API（Volcengine Ark，通过原生 `fetch` 调用，无第三方 LLM SDK 依赖）、`dotenv`（加载环境变量）、Vitest、Node.js CLI（readline REPL）。
 
 ## 构建与命令
 
@@ -35,7 +35,7 @@ npm run dev
 npm test          # 等同于: vitest run
 ```
 
-- 入口文件：`src/index.ts` 编译为 `dist/index.js`
+- 入口文件：`src/index.ts` 编译为 `dist/index.js`（可运行：`node dist/index.js "你的问题"`）
 - 需要 Node.js >= 20.0.0
 - 模块系统：ES Modules（package.json 中 `"type": "module"`）
 
@@ -62,7 +62,7 @@ npm test          # 等同于: vitest run
 
 ### 架构模式
 
-- **ToolDefinition 接口**：每个工具包含 `name`、`description`、`parameters`（JSON Schema）、`execute` 函数和 `category`（read/write/command）
+- **ToolDefinition 接口**：采用 OpenAI 工具 schema 形态 `{ type: "function", function: { name, description, parameters } }`（见 `src/types.ts`）。运行时的 `execute` 函数与 `category`（read/write/command）作为独立的工具注册/调度概念，尚未在类型中体现，属规划中。
 - **Harness 作为唯一控制层**：Agent Loop 仅与 Harness 交互；Harness 内部编排沙箱检查、规则检查和权限确认
 - **工具结果作为消息回传**：工具执行后，结果作为对话历史的一部分供下次 LLM 调用使用
 - **停止条件**：当模型回复不包含任何工具调用时循环结束，或达到 maxTurns 上限
@@ -100,7 +100,7 @@ npx vitest run --reporter=verbose  # 详细输出
 - **沙箱边界**：所有文件操作（读/写）限制在配置的 `workingDirectory` 内。路径经过解析和前缀检查；`..` 遍历和超出边界的绝对路径会被拒绝。
 - **危险命令黑名单**：基于正则的规则阻止 `rm -rf`、`curl`/`wget` 访问外部、`git push --force`、`sudo`、写入系统路径（`/etc`、`/usr`、`/var`）、`chmod 777`。
 - **写入确认**：写入/命令类工具执行前需要用户明确确认（`y/n`），除非设置了 `--auto-approve` 标志。
-- **API 密钥处理**：从 `ANTHROPIC_API_KEY` 环境变量加载。`.env` 和 `.env.local` 已加入 gitignore。绝不提交密钥。
+- **API 密钥处理**：从 `ARK_API_KEY` 环境变量加载。`.env` 和 `.env.local` 已加入 gitignore，可参考 `.env.example` 模板。绝不提交密钥。
 - **最大重试次数**：自验证重试循环上限为 3 次，防止无限循环。
 - **工具分类**：`read`（无需确认）、`write`（需要确认）、`command`（需要确认 + 规则检查）。
 
@@ -108,17 +108,29 @@ npx vitest run --reporter=verbose  # 详细输出
 
 ### 环境变量
 
-| 变量 | 必需 | 说明 |
-|------|------|------|
-| `ANTHROPIC_API_KEY` | 是 | 用于访问 Claude 的 Anthropic API 密钥 |
+| 变量 | 必需 | 默认值 | 说明 |
+|------|------|--------|------|
+| `ARK_API_KEY` | 是 | — | 访问 Volcengine Ark（OpenAI 兼容）的 API 密钥 |
+| `ARK_MODEL` | 是 | — | 使用的模型 ID |
+| `BASE_URL` | 否 | `https://ark.cn-beijing.volces.com/api/v3` | API base URL |
+| `MAX_TURNS` | 否 | `20` | 代理循环最大迭代次数（正整数） |
 
-### AppConfig（src/config.ts — 规划中）
+### AppConfig（src/config.ts — 已实现）
+
+`loadConfig(overrides?)` 加载 `.env` 并按「overrides > 环境变量 > 默认值」优先级解析配置。
 
 | 字段 | 默认值 | 说明 |
 |------|--------|------|
-| `model` | `claude-sonnet-4-20250514` | 使用的 Claude 模型 |
-| `maxTurns` | 20 | 代理循环最大迭代次数 |
+| `apiKey` | — （必需） | 来自 `ARK_API_KEY` |
+| `model` | — （必需） | 来自 `ARK_MODEL` |
+| `baseURL` | `https://ark.cn-beijing.volces.com/api/v3` | 来自 `BASE_URL` |
+| `maxTurns` | 20 | 来自 `MAX_TURNS` |
 | `workingDirectory` | CWD | 文件操作的沙箱根目录 |
+
+#### 规划中字段（尚未实现）
+
+| 字段 | 默认值 | 说明 |
+|------|--------|------|
 | `autoApprove` | false | 跳过写入/命令操作的确认 |
 | `testCommand` | — | 用于自验证的运行命令 |
 
