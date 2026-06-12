@@ -239,7 +239,7 @@ coding-agent/
 
 ---
 
-- [ ] **P1-W2-T4**: 实现 `run_command` 工具
+- [x] **P1-W2-T4**: 实现 `run_command` 工具
 
   **说明**：创建 `src/tools/run-command.ts`。参数 `command`（string，必填）。用 `child_process.exec` 执行命令，超时 30s，返回 stdout + stderr + exit code。初期不做权限拦截（W5 加入）。
 
