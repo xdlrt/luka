@@ -159,3 +159,11 @@
 - Why: 当前仓库只有本地 `build` 和 `test` 脚本，缺少远端合并前的最小质量卡点；首版 CI 需要先固定可重复安装、构建和测试，而不提前引入 lint、Harness 或未实现的安全能力。
 - What: 新增 GitHub Actions workflow，在 push 和 pull request 上使用 Node 20 执行 `npm ci` 与 `npm run ci`；新增 `.npmrc` 固定公网 npm registry，并把 lockfile 的 resolved 地址从内部 bnpm 归一到 npmjs，保证 GitHub 托管 runner 可安装依赖。
 - How: 将质量组合逻辑收敛到 `package.json` 的 `ci` 脚本，workflow 只调用单一入口；lockfile 只做 registry 主机替换，不改版本和 integrity。验证时本机默认 npm cache 因权限问题失败，改用临时 cache 后 `npm ci` 通过，并执行 `npm run build`、`npm test`、`npm run ci`，确认 11 个测试文件和 66 条测试全部通过。
+
+## add tool category classifier
+
+- commit: aa5a4d8
+- time: 2026-06-13 23:27
+- Why: P2 Harness 的权限确认、命令规则和沙箱都需要先知道工具的行为类别；如果分类散落在后续权限模块里，Agent Loop 很容易重新耦合具体工具名，破坏 Harness 作为统一控制层的边界。
+- What: 新增独立分类模块，将 `read_file`、`write_file`、预留的 `edit_file` 和 `run_command` 映射到 read/write/command，并让未知工具显式返回 `unknown`；已注册工具的运行时 `category` 继续保留在工具协议内，但不允许写成 `unknown`，OpenAI-compatible schema 仍不暴露任何运行时字段。
+- How: 用集中表驱动 `classifyTool()`，并用 permissions 单测覆盖已知工具、未知工具和默认注册表一致性；registry 集成测试继续证明模型可见 schema 不包含 `execute` 或 `category`。验证方式为 `npm run build` 与 `npm test`，确认 12 个测试文件和 69 条测试全部通过。
