@@ -143,3 +143,19 @@
 - Why: 单个超长执行计划已经难以维护和复盘，P1 到 P4 的不同阶段需要独立文档承载更清晰的里程碑、边界和后续写作素材。
 - What: 将 `docs/detailed-execution-plan.md` 拆分为 `docs/plan/p1-agent-loop.md`、`p2-harness.md`、`p3-context-planning.md`、`p4-release-writing.md`，并把主计划收敛为索引式总览。
 - How: 保留原有阶段内容但按里程碑分文件，减少主文档噪声；同步 AGENTS/commit notes 中的引用和提交哈希，验证方式为 `npm run build` 与 `npm test`，确认文档拆分不影响代码行为。
+
+## backfill historical commit notes
+
+- commit: f4cb915
+- time: 2026-06-13 23:09
+- Why: 历史提交缺少 Why / What / How 复盘，后续写技术文章或回看 P1 最小闭环演进时，只看 commit 标题无法还原关键取舍和验证证据。
+- What: 为当前分支历史中的 18 个提交补齐 commit notes，并把旧的不可达哈希 `cf4967a` 替换为当前历史中的 `ebe8beb`，让记录与真实 Git 历史一致。
+- How: 先用 `git log` 确认当前短哈希和提交时间，再按提交 diff 提炼每条记录的设计意图、行为变化和验证方式；通过 `git diff`、字段 `rg` 检查和哈希覆盖检查确认补录完整。本条记录在提交后追加，因为短哈希只能在提交创建后确定。
+
+## add baseline CI quality checks
+
+- commit: ci: add baseline quality checks
+- time: 2026-06-13 23:14
+- Why: 当前仓库只有本地 `build` 和 `test` 脚本，缺少远端合并前的最小质量卡点；首版 CI 需要先固定可重复安装、构建和测试，而不提前引入 lint、Harness 或未实现的安全能力。
+- What: 新增 GitHub Actions workflow，在 push 和 pull request 上使用 Node 20 执行 `npm ci` 与 `npm run ci`；新增 `.npmrc` 固定公网 npm registry，并把 lockfile 的 resolved 地址从内部 bnpm 归一到 npmjs，保证 GitHub 托管 runner 可安装依赖。
+- How: 将质量组合逻辑收敛到 `package.json` 的 `ci` 脚本，workflow 只调用单一入口；lockfile 只做 registry 主机替换，不改版本和 integrity。验证时本机默认 npm cache 因权限问题失败，改用临时 cache 后 `npm ci` 通过，并执行 `npm run build`、`npm test`、`npm run ci`，确认 11 个测试文件和 66 条测试全部通过。

@@ -52,15 +52,16 @@
 
 ### Commit 复盘
 
-- 每次创建 commit 后，必须在 `docs/commit-notes.md` 追加本次 commit 的短 hash、提交时间、Why / What / How。
+- 每次创建 commit 时，必须在同一个 commit 中同步更新 `docs/commit-notes.md`，记录本次提交的主题、提交时间、Why / What / How。
 - 记录必须包含 `commit`、`time`、`Why`、`What`、`How` 五项。
-- `commit` 必须使用 commit 短 hash，禁止只写 commit 标题。
+- `commit` 必须使用本次提交的标题或稳定主题；禁止要求记录最终短 hash，因为 commit 内容会参与 hash 计算，同提交内无法提前知道最终 hash。
 - `time` 必须使用本地时区的 `YYYY-MM-DD HH:mm` 格式。
 - `Why` 必须记录本次改动的问题背景、目标或取舍。
 - `What` 必须记录行为变化和架构边界变化，禁止只复述文件 diff。
 - `How` 必须记录关键实现路径、测试方式、踩坑点或反直觉点。
 - 记录必须服务最终技术文章和分享，必须沉淀可复用的设计理由、错误范式或验证证据。
 - 禁止写成流水账；禁止使用“更新代码”“修复问题”“通过测试”这类无信息量描述。
+- 禁止为了记录某个 commit 的复盘而再创建单独的 notes-only commit，避免形成递归提交链。
 
 ## 开发范式
 
@@ -117,7 +118,7 @@
 - 文档必须区分“当前已实现”和“规划中”。
 - 修改系统提示词必须补测试，至少证明关键安全边界和工具使用原则仍存在。
 - README、AGENTS、docs 中的能力描述必须与源码和测试一致。
-- commit 后必须同步追加 `docs/commit-notes.md`，记录短 hash、提交时间、Why / What / How。
+- commit 必须同步包含 `docs/commit-notes.md`，记录提交主题、提交时间、Why / What / How。
 
 反例：
 
