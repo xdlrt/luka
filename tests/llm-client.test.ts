@@ -10,6 +10,7 @@ const baseConfig: AppConfig = {
   model: "doubao-test",
   maxTurns: 20,
   workingDirectory: "/tmp",
+  autoApprove: false,
 };
 
 function jsonResponse(

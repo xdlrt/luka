@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from "vitest";
-import { handleUserInput } from "../src/index.js";
+import { handleUserInput, parseCliArgs } from "../src/index.js";
 import { ToolRegistry } from "../src/tools/index.js";
 import type { AppConfig } from "../src/config.js";
 
@@ -9,7 +9,38 @@ const baseConfig: AppConfig = {
   model: "doubao-test",
   maxTurns: 20,
   workingDirectory: "/tmp",
+  autoApprove: false,
 };
+
+describe("parseCliArgs", () => {
+  it("extracts --auto-approve without sending it as user input", () => {
+    expect(parseCliArgs(["--auto-approve", "edit", "file"])).toEqual({
+      autoApprove: true,
+      initialInput: "edit file",
+    });
+  });
+
+  it("treats -y as an alias for --auto-approve", () => {
+    expect(parseCliArgs(["-y", "run", "tests"])).toEqual({
+      autoApprove: true,
+      initialInput: "run tests",
+    });
+  });
+
+  it("keeps autoApprove disabled when the flag is absent", () => {
+    expect(parseCliArgs(["hello", "agent"])).toEqual({
+      autoApprove: false,
+      initialInput: "hello agent",
+    });
+  });
+
+  it("returns empty input when only auto-approve is provided", () => {
+    expect(parseCliArgs(["--auto-approve"])).toEqual({
+      autoApprove: true,
+      initialInput: "",
+    });
+  });
+});
 
 describe("handleUserInput", () => {
   it("ignores empty input and keeps the REPL running", async () => {

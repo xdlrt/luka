@@ -17,6 +17,7 @@ const baseConfig = {
   model: "doubao-test",
   maxTurns: 20,
   workingDirectory: "/tmp",
+  autoApprove: false,
 };
 
 function textResponse(content: string): ChatCompletionResponse {
@@ -121,9 +122,11 @@ describe("runAgentLoop permission integration", () => {
     );
 
     expect(result.success).toBe(true);
-    expect(permissionCheck).toHaveBeenCalledWith(readFile, {
-      path: "notes.txt",
-    });
+    expect(permissionCheck).toHaveBeenCalledWith(
+      readFile,
+      { path: "notes.txt" },
+      { autoApprove: false }
+    );
     expect(readFile.execute).toHaveBeenCalledWith({ path: "notes.txt" });
     expect(sentMessages[1].find((message) => message.role === "tool")).toEqual({
       role: "tool",
@@ -145,7 +148,9 @@ describe("runAgentLoop permission integration", () => {
 
     await runAgentLoop("write notes", baseConfig, tools, client, permissionCheck);
 
-    expect(permissionCheck).toHaveBeenCalledWith(writeFile, input);
+    expect(permissionCheck).toHaveBeenCalledWith(writeFile, input, {
+      autoApprove: false,
+    });
     expect(writeFile.execute).toHaveBeenCalledWith(input);
   });
 

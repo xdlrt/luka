@@ -36,6 +36,7 @@ describe("loadConfig", () => {
     expect(config.baseURL).toBe(DEFAULT_BASE_URL);
     expect(config.maxTurns).toBe(20);
     expect(config.workingDirectory).toBe(process.cwd());
+    expect(config.autoApprove).toBe(false);
   });
 
   it("reads overridable values from environment", () => {
@@ -78,6 +79,7 @@ describe("loadConfig", () => {
       baseURL: "https://override.example.com",
       maxTurns: 99,
       workingDirectory: "/tmp/work",
+      autoApprove: true,
     });
 
     expect(config.apiKey).toBe("override-key");
@@ -85,5 +87,6 @@ describe("loadConfig", () => {
     expect(config.baseURL).toBe("https://override.example.com");
     expect(config.maxTurns).toBe(99);
     expect(config.workingDirectory).toBe("/tmp/work");
+    expect(config.autoApprove).toBe(true);
   });
 });
