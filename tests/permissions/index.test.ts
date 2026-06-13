@@ -1,6 +1,10 @@
 import { describe, expect, it, vi } from "vitest";
-import type { PermissionIO } from "../../src/permissions/index.js";
+import {
+  checkToolPermission,
+  type PermissionIO,
+} from "../../src/permissions/index.js";
 import { requestPermission } from "../../src/permissions/index.js";
+import type { ToolDefinition } from "../../src/tools/index.js";
 
 function createMockIO(answer: string): PermissionIO & {
   write: ReturnType<typeof vi.fn<[string], void>>;
@@ -9,6 +13,19 @@ function createMockIO(answer: string): PermissionIO & {
   return {
     write: vi.fn<[string], void>(),
     question: vi.fn<[string], Promise<string>>().mockResolvedValue(answer),
+  };
+}
+
+function createTool(
+  name: string,
+  category?: ToolDefinition["category"]
+): ToolDefinition {
+  return {
+    name,
+    category,
+    description: `${name} description`,
+    parameters: { type: "object", properties: {} },
+    execute: vi.fn(async () => ({ tool_call_id: name, output: "" })),
   };
 }
 
@@ -172,6 +189,50 @@ describe("requestPermission", () => {
     );
 
     expect(decision).toEqual({ approved: true });
+    expect(io.write).toHaveBeenCalledWith(
+      "[PERMISSION] Execute tool: custom_tool\n"
+    );
+  });
+});
+
+describe("checkToolPermission", () => {
+  it("uses the runtime tool category when it is present", async () => {
+    const io = createMockIO("n");
+    const tool = createTool("custom_reader", "read");
+
+    const decision = await checkToolPermission(tool, { path: "notes.txt" }, io);
+
+    expect(decision).toEqual({ approved: true });
+    expect(io.write).not.toHaveBeenCalled();
+    expect(io.question).not.toHaveBeenCalled();
+  });
+
+  it("falls back to registered tool classification when category is missing", async () => {
+    const io = createMockIO("y");
+    const tool = createTool("write_file");
+
+    const decision = await checkToolPermission(
+      tool,
+      { path: "notes.txt", content: "hello" },
+      io
+    );
+
+    expect(decision).toEqual({ approved: true });
+    expect(io.write).toHaveBeenCalledWith(
+      "[PERMISSION] Write file: notes.txt\nContent preview: hello...\n"
+    );
+  });
+
+  it("prompts conservatively when the tool category is unknown", async () => {
+    const io = createMockIO("n");
+    const tool = createTool("custom_tool");
+
+    const decision = await checkToolPermission(tool, {}, io);
+
+    expect(decision).toEqual({
+      approved: false,
+      reason: "Cancelled by user",
+    });
     expect(io.write).toHaveBeenCalledWith(
       "[PERMISSION] Execute tool: custom_tool\n"
     );

@@ -175,3 +175,11 @@
 - Why: P2-W4-T2 需要先把人工确认做成可测试的独立能力，再由后续任务接入 Agent Loop；这样可以避免权限交互、工具执行和模型消息链路一次性耦合，减少后续 Harness 重构的迁移成本。
 - What: 新增 `requestPermission()`，对 read 类工具直接放行，对 `write_file` 打印路径和前三行内容预览后要求 y/n 确认，对 `run_command` 打印命令后要求确认；拒绝或无法识别输入统一返回 `Cancelled by user`，未知工具按保守策略进入确认。
 - How: 用可注入的 `PermissionIO` 包装 stdout/stdin，默认实现基于 `node:readline/promises`，测试中用 mock IO 避免阻塞交互；权限模块复用 `permissions/categories` 的 ToolCategory，保持权限层内聚。验证方式为 `npm test -- tests/permissions/index.test.ts`、`npm run build` 和 `npm test`，确认 rebase 到 `origin/main` 后 13 个测试文件和 78 条测试全部通过。
+
+## wire permission checks into agent loop
+
+- commit: wire permission checks into agent loop
+- time: 2026-06-13 23:50
+- Why: T2 已经把权限确认做成独立模块，但 Agent Loop 仍会直接执行所有工具调用；P2-W4-T3 需要把确认决策放到 tool call -> execution 的关键路径上，同时保持 Agent Loop 不理解具体确认文案和交互细节。
+- What: 新增 `checkToolPermission()` 作为工具定义到权限请求的薄适配层，并让 `runAgentLoop` 在执行工具前检查权限；批准时继续执行，拒绝时跳过工具并把 `[permission denied]` tool 消息回传给模型，未知工具仍作为错误 tool 消息进入下一轮。
+- How: 通过可注入的 `PermissionChecker` 测试批准、拒绝、未知工具和多工具混合路径，P1 端到端测试显式注入批准决策以避免自动化测试卡在 stdin；验证方式为 `npm run build`、目标权限/Agent Loop 测试和全量 `npm test`，确认 14 个测试文件和 87 条测试全部通过。

@@ -71,6 +71,7 @@ function createTool(
   return {
     name,
     description: `${name} description`,
+    category: "read",
     parameters: { type: "object", properties: {} },
     execute: vi.fn(async () => ({ tool_call_id: name, output })),
   };
