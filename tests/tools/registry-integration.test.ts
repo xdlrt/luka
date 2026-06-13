@@ -24,6 +24,13 @@ describe("default tool registry integration", () => {
       "write_file",
       "run_command",
     ]);
+    expect(
+      registry.getAll().map((tool) => [tool.name, tool.category])
+    ).toEqual([
+      ["read_file", "read"],
+      ["write_file", "write"],
+      ["run_command", "command"],
+    ]);
   });
 
   it("exports OpenAI-compatible definitions for all default tools", () => {
