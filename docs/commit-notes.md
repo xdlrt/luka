@@ -167,3 +167,11 @@
 - Why: P2 Harness 的权限确认、命令规则和沙箱都需要先知道工具的行为类别；如果分类散落在后续权限模块里，Agent Loop 很容易重新耦合具体工具名，破坏 Harness 作为统一控制层的边界。
 - What: 新增独立分类模块，将 `read_file`、`write_file`、预留的 `edit_file` 和 `run_command` 映射到 read/write/command，并让未知工具显式返回 `unknown`；已注册工具的运行时 `category` 继续保留在工具协议内，但不允许写成 `unknown`，OpenAI-compatible schema 仍不暴露任何运行时字段。
 - How: 用集中表驱动 `classifyTool()`，并用 permissions 单测覆盖已知工具、未知工具和默认注册表一致性；registry 集成测试继续证明模型可见 schema 不包含 `execute` 或 `category`。验证方式为 `npm run build` 与 `npm test`，确认 12 个测试文件和 69 条测试全部通过。
+
+## add permission confirmation module
+
+- commit: 0e8dfd3
+- time: 2026-06-13 23:40
+- Why: P2-W4-T2 需要先把人工确认做成可测试的独立能力，再由后续任务接入 Agent Loop；这样可以避免权限交互、工具执行和模型消息链路一次性耦合，减少后续 Harness 重构的迁移成本。
+- What: 新增 `requestPermission()`，对 read 类工具直接放行，对 `write_file` 打印路径和前三行内容预览后要求 y/n 确认，对 `run_command` 打印命令后要求确认；拒绝或无法识别输入统一返回 `Cancelled by user`，未知工具按保守策略进入确认。
+- How: 用可注入的 `PermissionIO` 包装 stdout/stdin，默认实现基于 `node:readline/promises`，测试中用 mock IO 避免阻塞交互；权限模块复用 `permissions/categories` 的 ToolCategory，保持权限层内聚。验证方式为 `npm test -- tests/permissions/index.test.ts`、`npm run build` 和 `npm test`，确认 rebase 到 `origin/main` 后 13 个测试文件和 78 条测试全部通过。
