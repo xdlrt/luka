@@ -1,7 +1,12 @@
 import type { AppConfig } from "./config.js";
 import { SYSTEM_PROMPT } from "./context/system-prompt.js";
 import { LLMClient, parseResponse } from "./llm-client.js";
+import {
+  checkToolPermission,
+  type PermissionDecision,
+} from "./permissions/index.js";
 import type { ToolRegistry } from "./tools/index.js";
+import type { ToolDefinition } from "./tools/types.js";
 import type { Message } from "./types.js";
 
 export interface AgentResult {
@@ -11,11 +16,17 @@ export interface AgentResult {
   success: boolean;
 }
 
+export type PermissionChecker = (
+  tool: ToolDefinition,
+  input: Record<string, unknown>
+) => Promise<PermissionDecision>;
+
 export async function runAgentLoop(
   userInput: string,
   config: AppConfig,
   tools: ToolRegistry,
-  client: LLMClient = new LLMClient(config)
+  client: LLMClient = new LLMClient(config),
+  permissionCheck: PermissionChecker = checkToolPermission
 ): Promise<AgentResult> {
   const messages: Message[] = [
     { role: "system", content: SYSTEM_PROMPT },
@@ -53,6 +64,22 @@ export async function runAgentLoop(
       toolsCalled.push(call.name);
       let content: string;
       try {
+        const tool = tools.get(call.name);
+        if (tool === undefined) {
+          throw new Error(`Tool not found: ${call.name}`);
+        }
+
+        const permission = await permissionCheck(tool, call.input);
+        if (!permission.approved) {
+          content = `[permission denied] ${permission.reason}`;
+          messages.push({
+            role: "tool",
+            tool_call_id: call.id,
+            content,
+          });
+          continue;
+        }
+
         const result = await tools.execute(call.name, call.input);
         content = result.error
           ? `${result.output}\n[error] ${result.error}`

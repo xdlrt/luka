@@ -102,12 +102,14 @@ describe("P1 end-to-end agent demo", () => {
       return response;
     });
     const client = { sendMessage } as unknown as LLMClient;
+    const permissionCheck = vi.fn(async () => ({ approved: true as const }));
 
     const result = await runAgentLoop(
       "在 src/greet.ts 中创建一个函数 greet(name) 返回 Hello, name!",
       { ...baseConfig, workingDirectory: tempDir },
       registry,
-      client
+      client,
+      permissionCheck
     );
 
     await expect(
@@ -120,6 +122,7 @@ describe("P1 end-to-end agent demo", () => {
       success: true,
     });
     expect(sendMessage).toHaveBeenCalledTimes(3);
+    expect(permissionCheck).toHaveBeenCalledTimes(2);
 
     const thirdTurnMessages = sentMessages[2];
     const readResultMessage = thirdTurnMessages.find(

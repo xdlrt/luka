@@ -1,5 +1,6 @@
 import { createInterface } from "node:readline/promises";
-import type { ToolCategory } from "./categories.js";
+import { classifyTool, type ToolCategory } from "./categories.js";
+import type { ToolDefinition } from "../tools/types.js";
 
 const CANCELLED_BY_USER = "Cancelled by user";
 
@@ -54,6 +55,21 @@ export async function requestPermission(
   }
 
   return { approved: false, reason: CANCELLED_BY_USER };
+}
+
+export async function checkToolPermission(
+  tool: ToolDefinition,
+  input: Record<string, unknown>,
+  io?: PermissionIO
+): Promise<PermissionDecision> {
+  return requestPermission(
+    {
+      toolName: tool.name,
+      category: tool.category ?? classifyTool(tool.name),
+      input,
+    },
+    io
+  );
 }
 
 function formatPermissionMessage(request: PermissionRequest): string {
