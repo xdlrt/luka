@@ -6,6 +6,7 @@ export interface AppConfig {
   model: string;
   maxTurns: number;
   workingDirectory: string;
+  autoApprove: boolean;
 }
 
 const DEFAULT_BASE_URL = "https://ark.cn-beijing.volces.com/api/v3";
@@ -56,6 +57,7 @@ export function loadConfig(overrides: Partial<AppConfig> = {}): AppConfig {
   const baseURL =
     resolve(overrides.baseURL, process.env.BASE_URL) ?? DEFAULT_BASE_URL;
   const workingDirectory = overrides.workingDirectory ?? process.cwd();
+  const autoApprove = overrides.autoApprove ?? false;
 
-  return { apiKey, baseURL, model, maxTurns, workingDirectory };
+  return { apiKey, baseURL, model, maxTurns, workingDirectory, autoApprove };
 }

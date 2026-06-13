@@ -183,3 +183,11 @@
 - Why: T2 已经把权限确认做成独立模块，但 Agent Loop 仍会直接执行所有工具调用；P2-W4-T3 需要把确认决策放到 tool call -> execution 的关键路径上，同时保持 Agent Loop 不理解具体确认文案和交互细节。
 - What: 新增 `checkToolPermission()` 作为工具定义到权限请求的薄适配层，并让 `runAgentLoop` 在执行工具前检查权限；批准时继续执行，拒绝时跳过工具并把 `[permission denied]` tool 消息回传给模型，未知工具仍作为错误 tool 消息进入下一轮。
 - How: 通过可注入的 `PermissionChecker` 测试批准、拒绝、未知工具和多工具混合路径，P1 端到端测试显式注入批准决策以避免自动化测试卡在 stdin；验证方式为 `npm run build`、目标权限/Agent Loop 测试和全量 `npm test`，确认 14 个测试文件和 87 条测试全部通过。
+
+## add auto approve cli flag
+
+- commit: add auto approve cli flag
+- time: 2026-06-13 23:55
+- Why: P2-W4-T4 需要给自动化测试和集成场景一条显式跳过人工确认的路径，否则接入权限确认后，涉及写文件或命令执行的端到端任务会卡在 stdin；同时这个开关必须保持可见、可测试，避免把权限绕过藏进环境变量。
+- What: 新增 `AppConfig.autoApprove` 并接入 Agent Loop 的权限检查参数；CLI 支持 `--auto-approve` 和 `-y`，解析时会从用户输入中剥离 flag，确保模型不会把 flag 当成任务内容；权限模块在 auto-approve 模式下直接批准工具请求，但不跳过工具执行、参数解析或错误回传。随同提交补充 AGENTS 的冲突处理约束，明确冲突修复默认服务于 rebase merge。
+- How: 用独立 `parseCliArgs()` 固定 flag 解析行为，并用配置、CLI、权限模块、Agent Loop 权限集成和 P1 端到端测试覆盖新增字段与调用形态；验证方式为目标测试 `npm test -- tests/config.test.ts tests/index.test.ts tests/permissions/index.test.ts tests/agent-loop.test.ts tests/agent-loop-permission.test.ts`、`npm run build` 和全量 `npm test`，确认 14 个测试文件和 95 条测试全部通过。

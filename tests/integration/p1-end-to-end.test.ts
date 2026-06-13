@@ -22,6 +22,7 @@ const baseConfig = {
   model: "doubao-test",
   maxTurns: 3,
   workingDirectory: "",
+  autoApprove: false,
 };
 
 function toolCallResponse(

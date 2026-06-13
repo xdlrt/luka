@@ -18,7 +18,8 @@ export interface AgentResult {
 
 export type PermissionChecker = (
   tool: ToolDefinition,
-  input: Record<string, unknown>
+  input: Record<string, unknown>,
+  options: { autoApprove?: boolean }
 ) => Promise<PermissionDecision>;
 
 export async function runAgentLoop(
@@ -69,7 +70,9 @@ export async function runAgentLoop(
           throw new Error(`Tool not found: ${call.name}`);
         }
 
-        const permission = await permissionCheck(tool, call.input);
+        const permission = await permissionCheck(tool, call.input, {
+          autoApprove: config.autoApprove,
+        });
         if (!permission.approved) {
           content = `[permission denied] ${permission.reason}`;
           messages.push({

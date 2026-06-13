@@ -14,6 +14,7 @@ const baseConfig = {
   model: "doubao-test",
   maxTurns: 20,
   workingDirectory: "/tmp",
+  autoApprove: false,
 };
 
 function textResponse(content: string): ChatCompletionResponse {
@@ -168,5 +169,29 @@ describe("runAgentLoop", () => {
     expect(result.success).toBe(false);
     expect(result.turnsUsed).toBe(2);
     expect(result.toolsCalled).toEqual(["echo", "echo"]);
+  });
+
+  it("passes autoApprove to the permission checker", async () => {
+    const client = makeClient([
+      toolCallResponse([{ id: "call-1", name: "echo", args: { x: 1 } }]),
+      textResponse("done"),
+    ]);
+    const tools = new ToolRegistry();
+    tools.register(createTool("echo", "echo-output"));
+    const permissionCheck = vi.fn(async () => ({ approved: true as const }));
+
+    await runAgentLoop(
+      "run echo",
+      { ...baseConfig, autoApprove: true },
+      tools,
+      client,
+      permissionCheck
+    );
+
+    expect(permissionCheck).toHaveBeenCalledWith(
+      expect.objectContaining({ name: "echo" }),
+      { x: 1 },
+      { autoApprove: true }
+    );
   });
 });

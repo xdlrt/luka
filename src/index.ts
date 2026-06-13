@@ -13,6 +13,29 @@ type AgentRunner = (
   tools: ToolRegistry
 ) => Promise<AgentResult>;
 
+export interface ParsedCliArgs {
+  autoApprove: boolean;
+  initialInput: string;
+}
+
+export function parseCliArgs(argv: string[]): ParsedCliArgs {
+  const promptParts: string[] = [];
+  let autoApprove = false;
+
+  for (const arg of argv) {
+    if (arg === "--auto-approve" || arg === "-y") {
+      autoApprove = true;
+      continue;
+    }
+    promptParts.push(arg);
+  }
+
+  return {
+    autoApprove,
+    initialInput: promptParts.join(" ").trim(),
+  };
+}
+
 export async function handleUserInput(
   rawInput: string,
   config: AppConfig,
@@ -67,9 +90,10 @@ async function runRepl(config: AppConfig, registry: ToolRegistry): Promise<void>
 }
 
 async function main(): Promise<void> {
-  const config = loadConfig();
+  const args = parseCliArgs(process.argv.slice(2));
+  const config = loadConfig({ autoApprove: args.autoApprove });
   const registry = createDefaultToolRegistry(config.workingDirectory);
-  const initialInput = process.argv.slice(2).join(" ").trim();
+  const initialInput = args.initialInput;
 
   if (initialInput !== "") {
     await handleUserInput(initialInput, config, registry);

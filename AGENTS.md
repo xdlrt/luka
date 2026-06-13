@@ -17,6 +17,12 @@
 
 ## 强约束
 
+### 冲突处理
+
+- 如果用户要求解冲突，目标必须是最终能够 `rebase and merge`。
+- 禁止直接用 merge commit 解冲突，除非用户明确要求改用 merge commit。
+- 解冲突时优先在当前分支上 rebase 目标分支并逐个解决冲突，完成后确认历史仍适合 rebase merge。
+
 ### 工具协议
 
 - `src/types.ts` 必须只表达 LLM API 消息协议和 OpenAI-compatible 工具 schema。

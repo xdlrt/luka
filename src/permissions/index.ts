@@ -19,6 +19,10 @@ export interface PermissionIO {
   question(prompt: string): Promise<string>;
 }
 
+export interface PermissionOptions {
+  autoApprove?: boolean;
+}
+
 export function createDefaultPermissionIO(): PermissionIO {
   const readline = createInterface({
     input: process.stdin,
@@ -41,8 +45,13 @@ export function createDefaultPermissionIO(): PermissionIO {
 
 export async function requestPermission(
   request: PermissionRequest,
-  io: PermissionIO = createDefaultPermissionIO()
+  io: PermissionIO = createDefaultPermissionIO(),
+  options: PermissionOptions = {}
 ): Promise<PermissionDecision> {
+  if (options.autoApprove === true) {
+    return { approved: true };
+  }
+
   if (request.category === "read") {
     return { approved: true };
   }
@@ -60,16 +69,25 @@ export async function requestPermission(
 export async function checkToolPermission(
   tool: ToolDefinition,
   input: Record<string, unknown>,
-  io?: PermissionIO
+  optionsOrIO: PermissionOptions | PermissionIO = {},
+  maybeIO?: PermissionIO
 ): Promise<PermissionDecision> {
+  const io = isPermissionIO(optionsOrIO) ? optionsOrIO : maybeIO;
+  const options = isPermissionIO(optionsOrIO) ? {} : optionsOrIO;
+
   return requestPermission(
     {
       toolName: tool.name,
       category: tool.category ?? classifyTool(tool.name),
       input,
     },
-    io
+    io,
+    options
   );
+}
+
+function isPermissionIO(value: PermissionOptions | PermissionIO): value is PermissionIO {
+  return "write" in value && "question" in value;
 }
 
 function formatPermissionMessage(request: PermissionRequest): string {

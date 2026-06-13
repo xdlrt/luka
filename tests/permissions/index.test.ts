@@ -193,6 +193,42 @@ describe("requestPermission", () => {
       "[PERMISSION] Execute tool: custom_tool\n"
     );
   });
+
+  it("auto-approves write tools without prompting", async () => {
+    const io = createMockIO("n");
+
+    const decision = await requestPermission(
+      {
+        toolName: "write_file",
+        category: "write",
+        input: { path: "notes.txt", content: "hello" },
+      },
+      io,
+      { autoApprove: true }
+    );
+
+    expect(decision).toEqual({ approved: true });
+    expect(io.write).not.toHaveBeenCalled();
+    expect(io.question).not.toHaveBeenCalled();
+  });
+
+  it("auto-approves command tools without prompting", async () => {
+    const io = createMockIO("n");
+
+    const decision = await requestPermission(
+      {
+        toolName: "run_command",
+        category: "command",
+        input: { command: "npm test" },
+      },
+      io,
+      { autoApprove: true }
+    );
+
+    expect(decision).toEqual({ approved: true });
+    expect(io.write).not.toHaveBeenCalled();
+    expect(io.question).not.toHaveBeenCalled();
+  });
 });
 
 describe("checkToolPermission", () => {
@@ -236,5 +272,21 @@ describe("checkToolPermission", () => {
     expect(io.write).toHaveBeenCalledWith(
       "[PERMISSION] Execute tool: custom_tool\n"
     );
+  });
+
+  it("auto-approves through checkToolPermission without prompting", async () => {
+    const io = createMockIO("n");
+    const tool = createTool("run_command", "command");
+
+    const decision = await checkToolPermission(
+      tool,
+      { command: "npm test" },
+      { autoApprove: true },
+      io
+    );
+
+    expect(decision).toEqual({ approved: true });
+    expect(io.write).not.toHaveBeenCalled();
+    expect(io.question).not.toHaveBeenCalled();
   });
 });
