@@ -239,3 +239,11 @@
 - Why: P2-W5-T4 需要在全量覆盖式 `write_file` 之外提供更窄的编辑能力，让模型能基于已读上下文做唯一字符串替换；先实现精确替换而不是 patch 解析，可以把行为边界收敛到可测试的最小闭环，并避免提前引入复杂 diff 语义。
 - What: 新增默认 `edit_file` 工具，接受 `path`、`old_string` 和 `new_string`，只在 `old_string` 精确出现一次时写回 UTF-8 文本；未匹配、多处匹配、二进制文件和非法路径都会返回错误且不改文件。默认工具集和 AGENTS 能力描述同步包含 `edit_file`，P2 计划状态标记为完成。
 - How: 工具实现复用 `read_file`/`write_file` 的相对路径约束和二进制拒绝思路，用出现次数检查防止误替换；registry 集成测试验证默认工具顺序、write 分类和 OpenAI-compatible schema 不泄露运行时字段，工具单测覆盖成功替换、删除文本、空文件、未匹配、多匹配、非法参数、路径拒绝和二进制拒绝。验证方式为目标工具/registry/categories/Agent Loop 测试、`npm run build` 和全量 `npm test`，确认 17 个测试文件和 136 条测试全部通过。
+
+## add verification test runner
+
+- commit: add verification test runner
+- time: 2026-06-14 11:13
+- Why: P2-W6 需要开始建立编辑后的自验证能力，但第一步应先交付一个独立、可测试的测试执行器；如果直接接入 Agent Loop，会把命令执行、结果摘要和对话注入耦合在一起，也容易提前声明尚未完成的自修复闭环。
+- What: 新增 `runTests()`，用于在指定工作目录执行测试命令，返回 passed、exitCode、stdout、stderr 和 durationMs；普通测试失败被结构化为失败结果而不是异常，超时统一返回失败结果并保留可读错误。P2 计划同步将 W6-T1 标记为完成，但没有新增配置、没有注册 LLM 工具，也没有接入编辑后自动验证。
+- How: 实现复用 Node `exec` 的 cwd 与 timeout 能力，并提供可选 `timeoutMs` 让超时单测不依赖 60 秒等待；单测覆盖成功、失败、stdout/stderr 保留、超时和非法输入。验证方式为 `npm run build`、`npm test -- tests/verification/test-runner.test.ts` 和全量 `npm test`，确认 18 个测试文件和 141 条测试全部通过。
