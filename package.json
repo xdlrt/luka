@@ -4,6 +4,16 @@
   "description": "Minimal coding agent built with TypeScript and an OpenAI-compatible (Volcengine Ark) API",
   "type": "module",
   "main": "dist/index.js",
+  "bin": {
+    "coding-agent": "dist/index.js"
+  },
+  "files": [
+    "dist",
+    "docs/demo.cast",
+    "README.md",
+    "LICENSE",
+    "CONTRIBUTING.md"
+  ],
   "scripts": {
     "build": "tsc",
     "ci": "npm run build && npm test",

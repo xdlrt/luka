@@ -3,7 +3,7 @@
 > **里程碑**：形成可对外发布的开源仓库，并完成技术文章。
 
 ## 任务清单
-- [ ] **P5-W14-T1**: 清理代码
+- [x] **P5-W14-T1**: 清理代码
 
   **说明**：审查所有源文件，确保命名一致，无 `any` 类型残留。`tsc --noEmit` 零报错。
 
@@ -18,7 +18,7 @@
 
 ---
 
-- [ ] **P5-W14-T2**: 编写完整 README
+- [x] **P5-W14-T2**: 编写完整 README
 
   **说明**：重写 README：项目概览、Mermaid 架构图、安装/配置说明、使用示例（含终端截图或代码块）、配置参考、持续 eval 结果、设计决策/权衡、contributing、license。
 
@@ -33,7 +33,7 @@
 
 ---
 
-- [ ] **P5-W14-T3**: 配置 npm 脚本、bin 入口、打包
+- [x] **P5-W14-T3**: 配置 npm 脚本、bin 入口、打包
 
   **说明**：配置 `package.json`：`"bin"` 字段指向编译后的 CLI、`"files"` 字段限定发布内容、`"engines"` 要求 Node >= 20。入口文件添加 shebang。本地验证 `npx .` 正常运行。
 
@@ -48,7 +48,7 @@
 
 ---
 
-- [ ] **P5-W14-T4**: 录制 Demo 并加入 README
+- [x] **P5-W14-T4**: 录制 Demo 并加入 README
 
   **说明**：用 `asciinema` 录制终端 demo：(1) Agent 修复失败测试、(2) 权限确认提示出现、(3) TODO 列表展示。嵌入 README。
 
@@ -61,7 +61,7 @@
 
 ---
 
-- [ ] **P5-W14-T5**: 添加 LICENSE、CONTRIBUTING.md、GitHub 模板
+- [x] **P5-W14-T5**: 添加 LICENSE、CONTRIBUTING.md、GitHub 模板
 
   **说明**：添加 MIT License。创建最小 CONTRIBUTING.md。添加 GitHub issue/PR 模板。
 

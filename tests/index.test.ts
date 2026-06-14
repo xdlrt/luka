@@ -1,6 +1,14 @@
+import { mkdtempSync, symlinkSync, writeFileSync } from "node:fs";
+import { tmpdir } from "node:os";
+import path from "node:path";
+import { pathToFileURL } from "node:url";
 import { describe, expect, it, vi } from "vitest";
 import packageJson from "../package.json" with { type: "json" };
-import { handleUserInput, parseCliArgs } from "../src/index.js";
+import {
+  handleUserInput,
+  isCliEntrypoint,
+  parseCliArgs,
+} from "../src/index.js";
 import { ToolRegistry } from "../src/tools/index.js";
 import type { AppConfig } from "../src/config.js";
 
@@ -145,7 +153,53 @@ describe("parseCliArgs", () => {
   });
 });
 
+describe("isCliEntrypoint", () => {
+  it("matches direct script execution", () => {
+    const dir = mkdtempSync(path.join(tmpdir(), "coding-agent-entry-"));
+    const script = path.join(dir, "index.js");
+    writeFileSync(script, "#!/usr/bin/env node\n");
+
+    expect(isCliEntrypoint(script, pathToFileURL(script).href)).toBe(true);
+  });
+
+  it("matches npm bin symlinks to the built entrypoint", () => {
+    const dir = mkdtempSync(path.join(tmpdir(), "coding-agent-entry-"));
+    const script = path.join(dir, "index.js");
+    const link = path.join(dir, "coding-agent");
+    writeFileSync(script, "#!/usr/bin/env node\n");
+    symlinkSync(script, link);
+
+    expect(isCliEntrypoint(link, pathToFileURL(script).href)).toBe(true);
+  });
+
+  it("does not match imports from another entrypoint", () => {
+    const dir = mkdtempSync(path.join(tmpdir(), "coding-agent-entry-"));
+    const script = path.join(dir, "index.js");
+    const other = path.join(dir, "other.js");
+    writeFileSync(script, "#!/usr/bin/env node\n");
+    writeFileSync(other, "#!/usr/bin/env node\n");
+
+    expect(isCliEntrypoint(other, pathToFileURL(script).href)).toBe(false);
+  });
+});
+
 describe("package scripts", () => {
+  it("exposes the built CLI as a package binary", () => {
+    expect(packageJson.bin).toEqual({
+      "coding-agent": "dist/index.js",
+    });
+  });
+
+  it("limits npm package contents to release artifacts", () => {
+    expect(packageJson.files).toEqual([
+      "dist",
+      "docs/demo.cast",
+      "README.md",
+      "LICENSE",
+      "CONTRIBUTING.md",
+    ]);
+  });
+
   it("provides a quick start command for the CLI entrypoint", () => {
     expect(packageJson.scripts.start).toBe(
       "npm run build && node dist/index.js"
