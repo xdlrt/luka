@@ -10,6 +10,8 @@ const baseConfig: AppConfig = {
   maxTurns: 20,
   workingDirectory: "/tmp",
   autoApprove: false,
+  maxRetries: 3,
+  verbose: false,
 };
 
 describe("parseCliArgs", () => {
@@ -17,6 +19,8 @@ describe("parseCliArgs", () => {
     expect(parseCliArgs(["--auto-approve", "edit", "file"])).toEqual({
       autoApprove: true,
       testCommand: undefined,
+      maxRetries: undefined,
+      verbose: false,
       initialInput: "edit file",
     });
   });
@@ -25,6 +29,8 @@ describe("parseCliArgs", () => {
     expect(parseCliArgs(["-y", "run", "tests"])).toEqual({
       autoApprove: true,
       testCommand: undefined,
+      maxRetries: undefined,
+      verbose: false,
       initialInput: "run tests",
     });
   });
@@ -33,6 +39,8 @@ describe("parseCliArgs", () => {
     expect(parseCliArgs(["hello", "agent"])).toEqual({
       autoApprove: false,
       testCommand: undefined,
+      maxRetries: undefined,
+      verbose: false,
       initialInput: "hello agent",
     });
   });
@@ -41,6 +49,8 @@ describe("parseCliArgs", () => {
     expect(parseCliArgs(["--auto-approve"])).toEqual({
       autoApprove: true,
       testCommand: undefined,
+      maxRetries: undefined,
+      verbose: false,
       initialInput: "",
     });
   });
@@ -49,6 +59,8 @@ describe("parseCliArgs", () => {
     expect(parseCliArgs(["--test-command", "npm test", "fix", "bug"])).toEqual({
       autoApprove: false,
       testCommand: "npm test",
+      maxRetries: undefined,
+      verbose: false,
       initialInput: "fix bug",
     });
   });
@@ -57,6 +69,45 @@ describe("parseCliArgs", () => {
     expect(() => parseCliArgs(["--test-command"])).toThrow(
       /--test-command requires a value/
     );
+  });
+
+  it("captures --max-retries value without sending it as user input", () => {
+    expect(parseCliArgs(["--max-retries", "2", "fix", "bug"])).toEqual({
+      autoApprove: false,
+      testCommand: undefined,
+      maxRetries: 2,
+      verbose: false,
+      initialInput: "fix bug",
+    });
+  });
+
+  it("throws when --max-retries is missing or invalid", () => {
+    expect(() => parseCliArgs(["--max-retries"])).toThrow(
+      /--max-retries requires a value/
+    );
+    expect(() => parseCliArgs(["--max-retries", "0"])).toThrow(
+      /--max-retries requires a positive integer/
+    );
+    expect(() => parseCliArgs(["--max-retries", "1.5"])).toThrow(
+      /--max-retries requires a positive integer/
+    );
+  });
+
+  it("captures verbose flags without sending them as user input", () => {
+    expect(parseCliArgs(["--verbose", "fix"])).toEqual({
+      autoApprove: false,
+      testCommand: undefined,
+      maxRetries: undefined,
+      verbose: true,
+      initialInput: "fix",
+    });
+    expect(parseCliArgs(["-v", "fix"])).toEqual({
+      autoApprove: false,
+      testCommand: undefined,
+      maxRetries: undefined,
+      verbose: true,
+      initialInput: "fix",
+    });
   });
 });
 

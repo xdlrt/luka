@@ -255,3 +255,11 @@
 - Why: W6-T1 已交付独立的 `runTests`，但结果还无法被模型感知。本次目标是补齐 W6 自验证闭环（T2 摘要 + T3 接入 + T4 端到端），让 Agent 改完代码后自动跑测试并看到结果，为后续 W7 的重试循环打底；难点在于既要复用 T1 的 `TestResult`，又不能把测试执行硬编码进循环导致单测必须真跑测试。
 - What: 新增 `formatTestResults()` 把 `TestResult` 压成回喂模型的简洁摘要（成功 `All tests passed (N tests in M files, Xs)`、失败列出 `FAIL ... / Expected / Received`、超 2000 字符截断、解析不到时回退原始输出）。`AppConfig` 新增可选 `testCommand`（覆盖 override/`TEST_COMMAND` 环境变量/空值/默认），CLI 新增 `--test-command <cmd>` 接入执行路径。Agent Loop 在每轮工具执行后，若本轮有成功的 `write_file`/`edit_file` 且配置了 `testCommand`，调用可注入的 `testRunner` 并把摘要以 assistant 消息注入对话；未配置则跳过。边界未变：仍未引入 Harness、未实现重试，验证只读不修复。
 - How: `formatTestResults` 用正则解析 vitest 默认 reporter 的 `Test Files` / `Tests` / `Duration` 行与 `FAIL`/`Expected`/`Received`，与输出格式耦合换取实现简单，解析失败时一律回退到截断后的 stdout/stderr 保证模型不会拿到空信息——这是刻意的健壮性兜底。Agent Loop 通过新增的 `testRunner` 默认参数（默认 `runTests`）实现依赖注入，单测注入假 runner 断言①编辑后触发、②结果以 assistant role 注入、③无 testCommand 不触发、④非编辑工具不触发的时序。T4 端到端用临时项目（`add.mjs` 故意写成 `a - b` + 纯 node `check.mjs` 作为 testCommand），避免在临时目录引入 TS 工具链即可真跑测试。验证方式为 `npm run build` 和全量 `npm test`。
+
+## add post-edit self-fix retry loop
+
+- commit: add post-edit self-fix retry loop
+- time: 2026-06-14 11:40
+- Why: W6 已经能在编辑后运行测试并把结果回喂模型，但失败结果只是一条普通验证消息，模型没有明确的修复语义，也缺少重试上限和过程日志。P2-W7 需要把这条链路升级为有限自修复循环，同时保持 Harness 仍留到 W8，避免过早把权限、安全、验证和执行统一成新抽象。
+- What: 新增 `retry-loop` 状态机记录验证失败次数、失败摘要和模型动作，测试失败时注入 `Tests failed. Please fix the issues:`，达到 `maxRetries` 后注入 `Unable to fix after n attempts` 并继续主对话；`AppConfig` 与 CLI 新增 `maxRetries` 和 `verbose`，logger 替换 Agent Loop 中直接 `console.log` 的 turn/tool/verify 输出。P2-W7 checklist 标记为完成，并新增完整自修复 E2E，证明失败测试能驱动下一轮编辑直到通过。
+- How: 重试模块只处理状态和消息生成，不直接调用 LLM 或工具，Agent Loop 仍负责 tool call 协议、权限、安全和测试执行；这样既能实现 W7 行为，又不抢 W8 Harness 的边界。验证覆盖配置读取与非法值、CLI 参数、logger 注入、retry 状态机、Agent Loop 失败回喂/上限停止/关闭验证/工具错误不验证，以及临时 `reverseString` 项目的真实编辑和测试执行。验证方式为 `npm run build`、目标 W7/W6 测试和全量 `npm test`，确认 25 个测试文件和 171 条测试全部通过。

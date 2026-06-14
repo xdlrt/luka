@@ -1,5 +1,6 @@
 import type { AppConfig } from "./config.js";
 import { SYSTEM_PROMPT } from "./context/system-prompt.js";
+import { createLogger, type Logger } from "./logger.js";
 import { LLMClient, parseResponse } from "./llm-client.js";
 import {
   checkToolPermission,
@@ -11,6 +12,11 @@ import type { ToolRegistry } from "./tools/index.js";
 import type { ToolDefinition } from "./tools/types.js";
 import type { Message } from "./types.js";
 import { formatTestResults } from "./verification/format-results.js";
+import {
+  createRetryState,
+  recordVerificationAttempt,
+  type RetryState,
+} from "./verification/retry-loop.js";
 import { runTests, type TestResult } from "./verification/test-runner.js";
 
 export interface AgentResult {
@@ -69,7 +75,8 @@ export async function runAgentLoop(
   client: LLMClient = new LLMClient(config),
   permissionCheck: PermissionChecker = checkToolPermission,
   safetyCheck: SafetyChecker = checkToolSafety,
-  testRunner: TestRunner = runTests
+  testRunner: TestRunner = runTests,
+  logger: Logger = createLogger({ verbose: config.verbose })
 ): Promise<AgentResult> {
   const messages: Message[] = [
     { role: "system", content: SYSTEM_PROMPT },
@@ -79,13 +86,19 @@ export async function runAgentLoop(
   const toolDefinitions = tools.getToolDefinitions();
 
   let lastText = "";
+  let retryState: RetryState = createRetryState();
+  let lastModelAction = "";
 
   for (let turn = 1; turn <= config.maxTurns; turn++) {
-    console.log(`[Agent] Turn ${turn}/${config.maxTurns}`);
+    logger.info(`[TURN ${turn}] started`);
     let editedThisTurn = false;
+    const turnStartedAt = Date.now();
     const response = await client.sendMessage(messages, {
       tools: toolDefinitions,
     });
+    logger.debug(
+      `[TURN ${turn}] LLM response received in ${Date.now() - turnStartedAt}ms`
+    );
     const assistantMessage = response.choices[0]?.message;
     if (assistantMessage !== undefined) {
       messages.push(assistantMessage);
@@ -93,9 +106,11 @@ export async function runAgentLoop(
 
     const parsed = parseResponse(response);
     lastText = parsed.text ?? "";
+    lastModelAction = summarizeModelAction(parsed.toolCalls.map((call) => call.name), lastText);
+    logger.debug(`[TURN ${turn}] tool calls=${parsed.toolCalls.length}`);
 
     if (parsed.toolCalls.length === 0) {
-      console.log(`[Agent] No tool calls; finishing at turn ${turn}`);
+      logger.info(`[TURN ${turn}] no tool calls; finishing`);
       return {
         finalMessage: lastText,
         turnsUsed: turn,
@@ -112,6 +127,7 @@ export async function runAgentLoop(
         if (tool === undefined) {
           throw new Error(`Tool not found: ${call.name}`);
         }
+        logger.info(`[TURN ${turn}] [Tool: ${call.name}] ${formatToolInput(call.input)}`);
 
         const safety = await safetyCheck(tool, call.input, {
           workingDirectory: config.workingDirectory,
@@ -158,24 +174,65 @@ export async function runAgentLoop(
     }
 
     if (editedThisTurn && config.testCommand !== undefined) {
+      const verificationStartedAt = Date.now();
       const testResult = await testRunner(
         config.testCommand,
         config.workingDirectory
       );
       const summary = formatTestResults(testResult);
-      console.log(`[Agent] Ran tests after edit: ${testResult.passed ? "passed" : "failed"}`);
+      const verification = recordVerificationAttempt(
+        retryState,
+        {
+          maxRetries: config.maxRetries,
+          testCommand: config.testCommand,
+        },
+        testResult,
+        summary,
+        lastModelAction
+      );
+      retryState = verification.state;
+      logger.debug(
+        `[VERIFY] completed in ${Date.now() - verificationStartedAt}ms`
+      );
+      if (testResult.passed) {
+        logger.info("[VERIFY] Tests passed");
+      } else {
+        logger.info(
+          `[VERIFY] Tests failed (attempt ${verification.result.attempts}/${config.maxRetries}): ${summarizeFailure(summary)}`
+        );
+      }
       messages.push({
         role: "assistant",
-        content: `[verification] ${summary}`,
+        content: verification.nextMessage,
       });
+    } else if (!editedThisTurn) {
+      retryState = createRetryState();
     }
   }
 
-  console.log(`[Agent] Reached maxTurns=${config.maxTurns}; stopping`);
+  logger.warn(`[Agent] Reached maxTurns=${config.maxTurns}; stopping`);
   return {
     finalMessage: lastText,
     turnsUsed: config.maxTurns,
     toolsCalled,
     success: false,
   };
+}
+
+function formatToolInput(input: Record<string, unknown>): string {
+  const path = input.path;
+  if (typeof path === "string" && path !== "") return `path=${path}`;
+  const command = input.command;
+  if (typeof command === "string" && command !== "") return `command=${command}`;
+  return "";
+}
+
+function summarizeModelAction(toolNames: string[], text: string): string {
+  if (toolNames.length > 0) return `tools: ${toolNames.join(", ")}`;
+  return text.slice(0, 120);
+}
+
+function summarizeFailure(summary: string): string {
+  const firstLine = summary.split("\n")[0];
+  return firstLine.trim() === "" ? "failed" : firstLine;
 }
