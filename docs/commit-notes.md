@@ -191,3 +191,11 @@
 - Why: P2-W4-T4 需要给自动化测试和集成场景一条显式跳过人工确认的路径，否则接入权限确认后，涉及写文件或命令执行的端到端任务会卡在 stdin；同时这个开关必须保持可见、可测试，避免把权限绕过藏进环境变量。
 - What: 新增 `AppConfig.autoApprove` 并接入 Agent Loop 的权限检查参数；CLI 支持 `--auto-approve` 和 `-y`，解析时会从用户输入中剥离 flag，确保模型不会把 flag 当成任务内容；权限模块在 auto-approve 模式下直接批准工具请求，但不跳过工具执行、参数解析或错误回传。随同提交补充 AGENTS 的冲突处理约束，明确冲突修复默认服务于 rebase merge。
 - How: 用独立 `parseCliArgs()` 固定 flag 解析行为，并用配置、CLI、权限模块、Agent Loop 权限集成和 P1 端到端测试覆盖新增字段与调用形态；验证方式为目标测试 `npm test -- tests/config.test.ts tests/index.test.ts tests/permissions/index.test.ts tests/agent-loop.test.ts tests/agent-loop-permission.test.ts`、`npm run build` 和全量 `npm test`，确认 14 个测试文件和 95 条测试全部通过。
+
+## add dangerous command rules
+
+- commit: add dangerous command rules
+- time: 2026-06-14 10:48
+- Why: P2-W5 需要在人工确认之前建立可测试的命令拦截能力；如果先把规则写进 Agent Loop 或 `run_command`，后续 Harness 接管执行链路时会重复迁移边界，也容易把安全策略和工具实现耦合在一起。
+- What: 新增独立命令安全规则引擎，只根据 `run_command` 的命令文本给出允许或拒绝决策；首批规则覆盖递归删除、外部 URL 请求、强制推送、系统路径写入、`sudo` 提权和 `chmod 777`，但暂不改变现有工具执行行为，避免提前完成 P2-W5-T3 的集成任务。
+- How: 用只读规则表和稳定 `ruleId`/`reason` 返回值承载策略，正则匹配保持最小实现并通过反向用例控制误伤；验证方式为 `npm run build`、`npm test -- tests/permissions/rules.test.ts` 和全量 `npm test`，确认 15 个测试文件和 104 条测试全部通过。
