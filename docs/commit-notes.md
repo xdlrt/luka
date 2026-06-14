@@ -343,3 +343,11 @@
 - Why: P4-W12 已经把 Agent、Harness 和 eval 的生命周期写成 JSONL trace，但 eval runner 仍主要依赖自身的临时计数，无法复用普通 CLI 和 eval 共享的观测证据，也缺少 repeat、报告和退化门禁。W13 的目标是把 trace 从旁路日志提升为持续评测的事实来源，同时保持真实 LLM eval 与无密钥 PR 校验分离。
 - What: 新增 trace reader、baseline gate 和 Markdown/dashboard report；eval runner 支持 suite、repeat、mock eval、稳定 trace 目录、baseline check，并把 result schema 扩展为 runId/tracePath/toolCalls/permissionDeniedCount/verificationRuns/feedbackStatus 等 trace 汇总指标。新增 smoke/regression suite、`npm run eval:mock`、eval workflow artifact 上传，README 更新 hooks/trace 和持续 eval 用法，P4-W13-T1 到 T4 checklist 同步标记完成。
 - How: 每个 eval attempt 使用独立 runId，把 trace 写入 `evals/results/traces/{suiteRunId}/`，任务临时目录删除后仍可复盘；runner 仍负责文件/输出/测试期望，行为指标只从 JSONL 汇总，避免重复埋点。mock eval 只验证平台链路并满足文件期望，不伪造成真实模型能力；baseline gate 先用保守阈值检查 pass rate、平均 turns/tool calls、flaky rate 和 feedback health。验证覆盖 trace 解析、runner suite/repeat/mock、baseline 退化、report/dashboard、脚本和 CI 配置。
+
+## align docs with current implementation
+
+- commit: align docs with current implementation
+- time: 2026-06-14 16:24
+- Why: README 已经基本描述 P4 后的能力，但 AGENTS 仍停在 P1 最小闭环，继续保留“没有 Harness、没有 grep/glob/todo_write、没有写前确认”的约束会误导后续维护者，也会让文档审查时无法判断哪些能力是真实现状、哪些仍是路线图。P5 文档也需要收窄“清理代码”任务，避免把 JSDoc 扫描和当前代码底线混在同一个强制任务里。
+- What: AGENTS 的项目边界更新为当前 P1-P4 主链路，明确默认 7 个工具、Harness、上下文压缩、TodoWrite、observability 和持续 eval 平台，同时把未成熟能力限定为完整 OS 沙箱、完整命令安全、检索增强、发布级包分发和长期趋势运营。README 补齐 hook/feedback 配置、架构图中的检索/规划工具和观测链路、默认工具表以及安全边界免责声明；总执行计划把 P4 里程碑与子计划完成状态对齐。P5 发布计划将首个任务聚焦为代码清理，弱化一次性补齐所有 JSDoc 的要求。
+- How: 先用源码和测试核对当前真实能力，再只改文档中的能力边界、维护约束和配置说明，不改运行时代码。验证方式为旧描述 `rg` 检查、工具/配置一致性搜索、`npm run build`、全量 `npm test` 和 `git diff --check`；测试结果为 44 个测试文件、304 条测试全部通过。

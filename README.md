@@ -100,8 +100,11 @@ npm start -- --test-command "npm test" "修复当前测试失败"
 | `TEST_COMMAND` | 否 | 无 | 编辑成功后自动运行的测试命令。 |
 | `MAX_RETRIES` | 否 | `3` | 自动验证失败后的最大重试次数，必须是正整数。 |
 | `VERBOSE` | 否 | `false` | 设置为 `1` 或 `true` 时输出更详细日志。 |
+| `HOOKS_CONFIG` | 否 | `agent-hooks.json` | hook 配置文件路径；CLI `--hooks-config` 优先级更高。 |
 | `OBSERVABILITY_DIR` | 否 | `.coding-agent/observability` | CLI trace JSONL 输出目录。 |
 | `OBSERVABILITY_FEEDBACK_URL` | 否 | 无 | 配置后启用 HTTP feedback sink。 |
+| `OBSERVABILITY_FEEDBACK_TIMEOUT_MS` | 否 | `3000` | HTTP feedback 单次请求超时，必须是正整数。 |
+| `OBSERVABILITY_FEEDBACK_BATCH_SIZE` | 否 | `20` | HTTP feedback 批量发送条数，必须是正整数。 |
 
 ### CLI 参数
 
@@ -126,14 +129,19 @@ flowchart TD
     Loop --> LLM[LLMClient<br/>chat/completions]
     LLM --> Loop
     Loop --> Registry[ToolRegistry]
-    Registry --> Tools[read_file<br/>write_file<br/>edit_file<br/>run_command]
+    Registry --> Tools[read_file<br/>write_file<br/>edit_file<br/>run_command<br/>grep<br/>glob<br/>todo_write]
     Loop --> Harness[Harness]
     Harness --> Safety[Sandbox + Command Rules]
     Harness --> Permission[Permission Confirmation]
     Harness --> Registry
     Harness --> Verification[Test Runner + Retry State]
     Verification --> Loop
-    Tools --> Harness
+    Loop --> Recorder[EventRecorder]
+    Harness --> Recorder
+    Recorder --> Hooks[Command / HTTP Hooks]
+    Recorder --> Trace[Local JSONL Trace]
+    Recorder --> Feedback[HTTP Feedback Sink]
+    Trace --> Evals[Eval Trace Reader + Report]
 ```
 
 核心边界：
@@ -152,12 +160,15 @@ flowchart TD
 | `write_file` | write | 写入 UTF-8 文本；父目录不存在时创建；会覆盖已有文件。 |
 | `edit_file` | write | 在文件中把唯一匹配的 `old_string` 精确替换为 `new_string`。 |
 | `run_command` | command | 在工作目录执行 shell 命令，返回 stdout/stderr，默认 30 秒超时。 |
+| `grep` | read | 用 JavaScript 正则搜索工作目录内 UTF-8 文本文件，默认忽略 `node_modules`、`.git`、`dist`。 |
+| `glob` | read | 用 glob pattern 查找工作目录内文件，默认忽略 `node_modules`、`.git`、`dist`。 |
+| `todo_write` | read | 替换当前结构化 TODO 列表，用于让模型维护任务计划和进度展示。 |
 
-文件工具当前只接受非空相对路径，并拒绝绝对路径和工作目录逃逸。`write_file` 是覆盖写入，不是合并写入；需要更小改动时优先使用 `edit_file`。
+文件和检索工具当前只接受工作目录内的相对路径，并拒绝绝对路径和工作目录逃逸。`read_file` 超过 500 行时默认返回前 100 行和后 50 行，可用 `offset` / `limit` 分段读取。`write_file` 是覆盖写入，不是合并写入；需要更小改动时优先使用 `edit_file`。
 
 ## 安全边界
 
-这个项目已经有基础安全控制，但还不是完整沙箱或成熟 Harness。
+这个项目已经有基础 Harness 控制层，但还不是完整 OS 沙箱或成熟命令安全系统。
 
 - 写入和命令工具默认需要用户确认。
 - `--auto-approve` 适合自动化和测试场景，但会降低人工把关强度。
@@ -165,6 +176,7 @@ flowchart TD
 - `run_command` 会拦截基础危险模式，包括递归删除、外部 URL `curl`/`wget`、强制推送、系统路径写入、`sudo` 和 `chmod 777`。
 - 命令仍通过 shell 执行；不要把当前规则理解为完整命令安全策略。
 - 工具执行异常会转成 tool 消息回传给模型，避免单个工具失败直接中断整个循环。
+- observability event 会对 payload 做摘要和敏感字段脱敏；hook 和 HTTP feedback 只应接收脱敏后的事件数据。
 
 ## 开发
 
@@ -189,6 +201,8 @@ npm run eval:mock
 - Agent Loop 的停止条件、多工具调用、工具错误和 `maxTurns`
 - 权限确认、命令规则、工作目录边界
 - 编辑后验证、测试结果格式化和重试状态
+- 上下文压缩、消息历史、TodoWrite 规划状态
+- observability events、hooks、trace、eval runner、baseline gate 和 report
 
 ## Eval Results
 

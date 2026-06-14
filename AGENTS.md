@@ -6,14 +6,14 @@
 
 ## 项目边界
 
-这是一个极简 coding agent。当前真实能力是 P1 最小闭环：CLI/REPL 接收用户输入，Agent Loop 调用 OpenAI-compatible `chat/completions`，解析模型返回的 `tool_calls`，通过 `ToolRegistry` 执行工具，并把工具结果回传给模型。
+这是一个极简 coding agent。当前真实能力已经覆盖 P1-P4 主链路：CLI/REPL 接收用户输入，Agent Loop 调用 OpenAI-compatible `chat/completions`，解析模型返回的 `tool_calls`，通过 `Harness` 统一编排权限、安全、工具执行和编辑后验证，并把工具结果回传给模型继续决策。
 
-- 当前默认工具只有 `read_file`、`write_file`、`edit_file`、`run_command`。
-- 当前只有固定系统提示词；尚未实现消息历史压缩、上下文裁剪、检索增强。
-- 当前没有统一 Harness；尚未实现写前确认、危险命令黑名单、命令规则引擎、自动测试、自修复重试。
-- 当前没有 `grep`、`glob`、`todo_write`。
+- 当前默认工具包括 `read_file`、`write_file`、`edit_file`、`run_command`、`grep`、`glob`、`todo_write`。
+- 当前已有消息历史管理、上下文压缩、长文件分段读取、TodoWrite 式规划状态、基础 observability events、hooks、trace、mock/真实 eval runner、suite/repeat/report/baseline check。
+- 当前已有基础 Harness：工作目录边界检查、写入和命令权限确认、基础危险命令规则、编辑后测试验证和重试状态。
+- 当前仍不是完整 IDE Agent：没有 GUI、插件市场、多模型适配层、检索增强 RAG、完整 OS 级沙箱、成熟命令安全策略、发布级 npm bin 打包或长期趋势运营数据。
 
-禁止在代码、文档、提示词或 CLI 输出中暗示未实现能力已经存在。尤其禁止声称当前已有写前确认、危险命令拦截、完整沙箱、自验证修复或 TodoWrite。
+禁止在代码、文档、提示词或 CLI 输出中暗示未实现或未成熟能力已经存在。尤其禁止声称当前具备完整沙箱、完整危险命令防护、任意命令安全执行、成熟长期趋势平台、发布级包分发或真正的检索增强。
 
 ## 强约束
 
@@ -38,15 +38,20 @@
 - 当模型回复没有 tool calls 时，Agent Loop 必须停止并返回成功。
 - 当达到 `maxTurns` 时，Agent Loop 必须停止并返回 `success: false`。
 - 工具执行异常必须转成 tool 消息回传给模型，禁止让单个工具异常直接中断整个循环，除非是协议级不可恢复错误。
-- 当前没有 Harness 时，Agent Loop 可以直接调用 `ToolRegistry`。
-- 一旦引入 Harness，Agent Loop 必须只通过 Harness 执行工具，禁止绕过 Harness 直接调用 `ToolRegistry.execute()`。
+- Agent Loop 必须只通过 `HarnessLike.executeTool()` 执行工具，禁止绕过 Harness 直接调用 `ToolRegistry.execute()`。
+- 测试替身可以实现 `HarnessLike`，但不能改变真实执行路径的边界：tool call -> Harness -> ToolRegistry -> tool message。
+- 上下文压缩必须保留系统提示词和最近消息，禁止压缩后破坏 tool call / tool message 配对。
+- TodoWrite 状态只能作为额外系统上下文注入，禁止替代真实消息历史或工具结果。
 
 ### 安全状态
 
 - `read_file` / `write_file` / `edit_file` 当前必须只接受非空相对路径，必须拒绝绝对路径和包含 `..` 的路径片段。
+- `grep` / `glob` 的 `path` 可选，但提供时必须是非空相对路径，并拒绝绝对路径和包含 `..` 的路径片段。
 - `read_file` 必须拒绝二进制文件。
-- `write_file` 当前会覆盖已有文件；在写前确认实现前，禁止把它描述成安全写入。
-- `run_command` 当前只有 `cwd` 和超时保护；禁止把它描述成已具备危险命令拦截。
+- `write_file` 当前会覆盖已有文件；即使有权限确认，也禁止把它描述成合并写入或无风险写入。
+- `run_command` 当前有工作目录、超时和基础危险命令规则；禁止把它描述成完整命令沙箱或完整安全策略。
+- `--auto-approve` 只跳过人工确认，不能绕过路径边界、命令规则、参数校验或工具错误回传。
+- observability event 必须做摘要和敏感信息脱敏，禁止记录 `ARK_API_KEY`、完整环境变量、Authorization、token、password、secret 或真实凭证。
 - 任何权限、安全、命令执行相关改动，必须补拒绝路径、失败命令或拦截规则测试。
 
 ### 配置与 CLI
@@ -55,6 +60,7 @@
 - `MAX_TURNS` 必须保持正整数校验。
 - 新增配置字段必须同时覆盖：override 优先级、环境变量读取、非法值、默认值。
 - 新增 CLI flag 必须接入配置或执行路径，并补 CLI 输入处理测试；禁止只更新帮助文案。
+- `--auto-approve`、`--test-command`、`--max-retries`、`--verbose`、`--hooks-config` 必须从用户任务中剥离，禁止把这些 flag 作为 prompt 内容传给模型。
 
 ### Commit 复盘
 
@@ -106,16 +112,31 @@
 
 正例：
 
-- 先定义 Harness 的最小接口，再让 Agent Loop 依赖 Harness。
+- 保持 Agent Loop 依赖 `HarnessLike`，让真实执行路径统一经过 `Harness`。
 - 权限确认、危险命令规则、沙箱边界、自验证必须集中在 Harness 内编排。
 - 每条拒绝规则必须有测试证明会被拒绝，并证明正常命令不被误伤。
+- 编辑后验证只在 `write_file` / `edit_file` 成功后触发，并把测试摘要作为后续上下文回传给模型。
 
 反例：
 
 - 在各个工具里分散实现权限确认。
 - 在 Agent Loop 中直接写危险命令黑名单。
 - 只在系统提示词里要求模型不要做危险操作，却没有代码级拦截。
-- 引入 Harness 后仍保留绕过 Harness 的工具执行路径。
+- 保留绕过 Harness 的真实工具执行路径。
+
+### 修改上下文、规划或观测
+
+正例：
+
+- 修改上下文压缩时保持 tool call / tool message 配对完整，并补 `tests/context/*.test.ts`。
+- 修改 `todo_write` 或规划状态时保证工具消息、模型上下文和 CLI 展示一致，并补 planning/tools/CLI 测试。
+- 修改 observability events、hooks、sinks 或 eval trace 时保持 payload 脱敏和 schema 稳定，并补对应 observability/eval 测试。
+
+反例：
+
+- 为了压缩 token 丢弃未闭合的工具调用链路。
+- 把 TODO 展示当作真实执行状态，跳过模型工具调用结果。
+- 在 trace、hook payload 或 report 中写入密钥、完整环境变量或未脱敏敏感输出。
 
 ### 更新文档或提示词
 
@@ -141,6 +162,10 @@
 - 修改 LLM 请求、响应解析或 tool call 协议：必须跑 `tests/llm-client.test.ts` 和 `tests/agent-loop.test.ts`。
 - 修改 Agent Loop：必须跑 `tests/agent-loop.test.ts` 和 `tests/integration/p1-end-to-end.test.ts`。
 - 修改工具：必须跑对应 `tests/tools/*.test.ts` 和 `tests/tools/registry-integration.test.ts`。
+- 修改 Harness、权限、规则或沙箱：必须跑 `tests/harness.test.ts`、`tests/agent-loop-permission.test.ts` 和对应 `tests/permissions/*.test.ts`。
+- 修改编辑后验证或重试：必须跑 `tests/agent-loop-verification.test.ts`、`tests/agent-loop-retry.test.ts`、`tests/verification/*.test.ts` 和相关集成测试。
+- 修改上下文压缩、消息历史、系统提示词或规划：必须跑对应 `tests/context/*.test.ts`、`tests/planning/*.test.ts` 和 `tests/tools/todo-write.test.ts`。
+- 修改 observability、hooks、trace、eval runner、baseline 或 report：必须跑对应 `tests/observability/*.test.ts`、`tests/evals-*.test.ts` 和 `npm run eval:mock`。
 - 修改 CLI 输入处理：必须跑 `tests/index.test.ts`。
 - 合并前必须跑 `npm run build` 和 `npm test`。
 
