@@ -159,6 +159,7 @@ describe("handleUserInput", () => {
       toolsCalled: [],
       success: true,
       totalTokens: 2,
+      todoDisplay: undefined,
     }));
 
     const shouldContinue = await handleUserInput(
@@ -182,6 +183,7 @@ describe("handleUserInput", () => {
       toolsCalled: ["read_file", "write_file"],
       success: true,
       totalTokens: 4,
+      todoDisplay: undefined,
     }));
 
     await handleUserInput(
@@ -206,6 +208,7 @@ describe("handleUserInput", () => {
       toolsCalled: ["run_command"],
       success: false,
       totalTokens: 6,
+      todoDisplay: undefined,
     }));
 
     await handleUserInput(
@@ -217,6 +220,63 @@ describe("handleUserInput", () => {
     );
 
     expect(writeLine).toHaveBeenCalledWith("[CLI] Stopped after 3 turns");
+  });
+
+  it("prints todo display when the agent reports a plan", async () => {
+    const writeLine = vi.fn();
+    const runner = vi.fn(async () => ({
+      finalMessage: "updated",
+      turnsUsed: 2,
+      toolsCalled: ["todo_write"],
+      success: true,
+      totalTokens: 4,
+      todoDisplay: [
+        "Progress: 1/2 completed",
+        "[x] Inspect code",
+        "[~] Implement tool",
+      ].join("\n"),
+    }));
+
+    await handleUserInput(
+      "plan task",
+      baseConfig,
+      new ToolRegistry(),
+      writeLine,
+      runner
+    );
+
+    expect(writeLine).toHaveBeenCalledWith("updated");
+    expect(writeLine).toHaveBeenCalledWith(
+      [
+        "Progress: 1/2 completed",
+        "[x] Inspect code",
+        "[~] Implement tool",
+      ].join("\n")
+    );
+    expect(writeLine).toHaveBeenCalledWith("[CLI] Tools called: todo_write");
+  });
+
+  it("does not print todo display when no plan exists", async () => {
+    const writeLine = vi.fn();
+    const runner = vi.fn(async () => ({
+      finalMessage: "done",
+      turnsUsed: 1,
+      toolsCalled: [],
+      success: true,
+      totalTokens: 2,
+      todoDisplay: undefined,
+    }));
+
+    await handleUserInput(
+      "simple task",
+      baseConfig,
+      new ToolRegistry(),
+      writeLine,
+      runner
+    );
+
+    expect(writeLine).toHaveBeenCalledTimes(1);
+    expect(writeLine).toHaveBeenCalledWith("done");
   });
 
   it("prints errors and keeps the REPL running when the agent throws", async () => {

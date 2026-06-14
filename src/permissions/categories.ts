@@ -8,6 +8,7 @@ const TOOL_CATEGORIES: Record<string, RegisteredToolCategory> = {
   run_command: "command",
   grep: "read",
   glob: "read",
+  todo_write: "read",
 };
 
 export function classifyTool(toolName: string): ToolCategory {

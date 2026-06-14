@@ -84,6 +84,9 @@ export async function handleUserInput(
     if (result.finalMessage !== "") {
       writeLine(result.finalMessage);
     }
+    if (result.todoDisplay !== undefined && result.todoDisplay !== "") {
+      writeLine(result.todoDisplay);
+    }
     if (result.toolsCalled.length > 0) {
       writeLine(`[CLI] Tools called: ${result.toolsCalled.join(", ")}`);
     }
@@ -97,7 +100,7 @@ export async function handleUserInput(
   return true;
 }
 
-async function runRepl(config: AppConfig, registry: ToolRegistry): Promise<void> {
+async function runRepl(config: AppConfig): Promise<void> {
   const rl = createInterface({ input, output });
   let running = true;
 
@@ -114,7 +117,11 @@ async function runRepl(config: AppConfig, registry: ToolRegistry): Promise<void>
     } catch {
       break;
     }
-    const shouldContinue = await handleUserInput(line, config, registry);
+    const shouldContinue = await handleUserInput(
+      line,
+      config,
+      createDefaultToolRegistry(config.workingDirectory)
+    );
     if (!shouldContinue) break;
   }
 
@@ -137,7 +144,7 @@ async function main(): Promise<void> {
     return;
   }
 
-  await runRepl(config, registry);
+  await runRepl(config);
 }
 
 function parsePositiveInteger(raw: string, flag: string): number {

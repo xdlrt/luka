@@ -9,7 +9,9 @@ import { SYSTEM_PROMPT } from "./context/system-prompt.js";
 import { Harness, type HarnessLike } from "./harness.js";
 import { createLogger, type Logger } from "./logger.js";
 import { LLMClient, parseResponse } from "./llm-client.js";
+import type { TodoManager } from "./planning/todo.js";
 import type { ToolRegistry } from "./tools/index.js";
+import type { Message } from "./types.js";
 
 export interface AgentResult {
   finalMessage: string;
@@ -17,6 +19,7 @@ export interface AgentResult {
   toolsCalled: string[];
   success: boolean;
   totalTokens: number;
+  todoDisplay?: string;
 }
 
 export async function runAgentLoop(
@@ -32,6 +35,7 @@ export async function runAgentLoop(
 ): Promise<AgentResult> {
   const activeHarness =
     harness ?? Harness.fromAppConfig(config, { logger });
+  const todoManager = tools.getTodoManager();
   const history = new MessageHistory([
     { role: "system", content: SYSTEM_PROMPT },
     { role: "user", content: userInput },
@@ -56,7 +60,7 @@ export async function runAgentLoop(
         `[CONTEXT] Compressing: ${beforeTokens} → ${afterTokens} tokens`
       );
     }
-    const messages = history.getMessages();
+    const messages = withTodoContext(history.getMessages(), todoManager);
     logger.debug(
       `[CONTEXT] messages=${messages.length}, approxTokens=${history.getApproxTokenCount()}`
     );
@@ -88,6 +92,7 @@ export async function runAgentLoop(
         toolsCalled,
         success: true,
         totalTokens,
+        todoDisplay: getTodoDisplay(todoManager),
       };
     }
 
@@ -121,10 +126,38 @@ export async function runAgentLoop(
     toolsCalled,
     success: false,
     totalTokens,
+    todoDisplay: getTodoDisplay(todoManager),
   };
 }
 
 function summarizeModelAction(toolNames: string[], text: string): string {
   if (toolNames.length > 0) return `tools: ${toolNames.join(", ")}`;
   return text.slice(0, 120);
+}
+
+function withTodoContext(
+  messages: Message[],
+  todoManager: TodoManager | undefined
+): Message[] {
+  const todoContext = todoManager?.formatForModel();
+  if (todoContext === undefined || todoContext === "") return messages;
+  const [firstMessage, ...remainingMessages] = messages;
+  if (firstMessage === undefined) {
+    return [{ role: "system", content: todoContext }];
+  }
+  if (firstMessage.role !== "system") {
+    return [{ role: "system", content: todoContext }, ...messages];
+  }
+  return [
+    firstMessage,
+    { role: "system", content: todoContext },
+    ...remainingMessages,
+  ];
+}
+
+function getTodoDisplay(
+  todoManager: TodoManager | undefined
+): string | undefined {
+  const display = todoManager?.formatForDisplay();
+  return display === undefined || display === "" ? undefined : display;
 }

@@ -26,6 +26,7 @@ describe("default tool registry integration", () => {
       "run_command",
       "grep",
       "glob",
+      "todo_write",
     ]);
     expect(
       registry.getAll().map((tool) => [tool.name, tool.category])
@@ -36,6 +37,7 @@ describe("default tool registry integration", () => {
       ["run_command", "command"],
       ["grep", "read"],
       ["glob", "read"],
+      ["todo_write", "read"],
     ]);
   });
 
@@ -51,6 +53,7 @@ describe("default tool registry integration", () => {
       "run_command",
       "grep",
       "glob",
+      "todo_write",
     ]);
     for (const definition of registry.getToolDefinitions()) {
       expect(definition.type).toBe("function");
@@ -103,6 +106,16 @@ describe("default tool registry integration", () => {
         name: "glob",
         input: { pattern: "**/*.txt" },
       },
+      {
+        id: "call-todo",
+        name: "todo_write",
+        input: {
+          todos: [
+            { id: "inspect", content: "Inspect files", status: "completed" },
+            { id: "finish", content: "Finish task", status: "in_progress" },
+          ],
+        },
+      },
     ];
 
     const results = [];
@@ -136,6 +149,14 @@ describe("default tool registry integration", () => {
     expect(results[6]).toEqual({
       tool_call_id: "glob",
       output: "notes/hello.txt",
+    });
+    expect(results[7]).toEqual({
+      tool_call_id: "todo_write",
+      output: [
+        "Progress: 1/2 completed",
+        "[x] Inspect files",
+        "[~] Finish task",
+      ].join("\n"),
     });
   });
 
