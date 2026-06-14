@@ -7,6 +7,8 @@ import {
   DEFAULT_HOOKS_CONFIG_FILE,
   HookRuntime,
   loadHookConfig,
+  summarizeHookConfig,
+  type HookSummary,
 } from "./observability/hooks.js";
 import { EventRecorder } from "./observability/recorder.js";
 import {
@@ -54,11 +56,18 @@ export async function runAgentSession(
     };
   }
 
-  const recorder = await createEventRecorder(config);
+  const { recorder, hookSummary, hooksConfigPath } = await createEventRecorder(
+    config
+  );
   try {
     recorder.emit("SessionStart", {
+      source: "cli",
       workingDirectory: config.workingDirectory,
       model: config.model,
+      hooksConfigPath,
+      hooksConfigured: hookSummary.hookCommandCount > 0,
+      hookEventCount: hookSummary.hookEventCount,
+      hookCommandCount: hookSummary.hookCommandCount,
     });
     recorder.emit("UserPromptSubmit", {
       input: userInput,
@@ -97,16 +106,21 @@ export async function runAgentSession(
 
 export async function createEventRecorder(
   config: AppConfig
-): Promise<EventRecorder> {
+): Promise<{
+  recorder: EventRecorder;
+  hookSummary: HookSummary;
+  hooksConfigPath: string;
+}> {
   const runId = randomUUID();
+  const localSink = new LocalJsonlSink({
+    directory: path.resolve(
+      config.workingDirectory,
+      config.observability.localDir
+    ),
+    runId,
+  });
   const sinks: EventSink[] = [
-    new LocalJsonlSink({
-      directory: path.resolve(
-        config.workingDirectory,
-        config.observability.localDir
-      ),
-      runId,
-    }),
+    localSink,
   ];
   if (
     config.observability.feedback.enabled &&
@@ -121,10 +135,10 @@ export async function createEventRecorder(
     );
   }
 
-  let hookConfig;
   const hooksConfigPath =
     config.hooksConfigPath ??
     path.resolve(config.workingDirectory, DEFAULT_HOOKS_CONFIG_FILE);
+  let hookConfig;
   try {
     hookConfig = await loadHookConfig(hooksConfigPath);
   } catch (error) {
@@ -134,14 +148,28 @@ export async function createEventRecorder(
   }
 
   const recorder = new EventRecorder({ runId, sinks });
-  if (hookConfig === undefined) return recorder;
+  if (hookConfig === undefined) {
+    return {
+      recorder,
+      hookSummary: { hookEventCount: 0, hookCommandCount: 0 },
+      hooksConfigPath,
+    };
+  }
 
   const hookRuntime = new HookRuntime(hookConfig, {
     onFailure: (event, hook, error) =>
       recorder.emitHookFailure(event, hook, error),
+    onHookEvent: (type, payload) => recorder.emit(type, payload),
+    sessionId: runId,
+    transcriptPath: localSink.path,
+    cwd: config.workingDirectory,
   });
   recorder.setHookRuntime(hookRuntime);
-  return recorder;
+  return {
+    recorder,
+    hookSummary: summarizeHookConfig(hookConfig),
+    hooksConfigPath,
+  };
 }
 
 function runAgentLoopWithOptions(

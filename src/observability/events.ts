@@ -14,6 +14,8 @@ export const AGENT_EVENT_TYPES = [
   "SessionEnd",
   "EvalTaskStart",
   "EvalTaskEnd",
+  "HookStart",
+  "HookEnd",
   "HookFailure",
 ] as const;
 

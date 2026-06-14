@@ -52,6 +52,41 @@ describe("observability events", () => {
     ).toThrow(/Unknown event type/);
   });
 
+  it("creates hook execution events", () => {
+    expect(
+      validateAgentEvent(
+        createAgentEvent("run-1", "HookStart", {
+          hookId: "hook-1",
+          hookEventName: "PreToolUse",
+          hookType: "command",
+        })
+      )
+    ).toMatchObject({
+      type: "HookStart",
+      payload: {
+        hookId: "hook-1",
+        hookEventName: "PreToolUse",
+        hookType: "command",
+      },
+    });
+    expect(
+      validateAgentEvent(
+        createAgentEvent("run-1", "HookEnd", {
+          hookId: "hook-1",
+          outcome: "success",
+          stdout: "ok",
+        })
+      )
+    ).toMatchObject({
+      type: "HookEnd",
+      payload: {
+        hookId: "hook-1",
+        outcome: "success",
+        stdout: "ok",
+      },
+    });
+  });
+
   it("rejects invalid payload shape", () => {
     expect(() =>
       validateAgentEvent({

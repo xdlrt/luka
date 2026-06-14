@@ -399,3 +399,11 @@
 - Why: 当前 TUI 空会话首屏只有一行提示，虽然可用，但缺少 Claude Code 风格启动画面的身份感和上下文信息。为了提升进入 TUI 后的第一眼可读性，同时不引入 slash command、历史恢复或模型切换等未实现能力，本次只把空状态改成静态欢迎面板。
 - What: 空消息状态下新增 `StartupScreen`，展示 `Welcome to coding-agent`、简洁 ASCII 标识、当前 model、cwd、权限模式以及发送/退出提示；用户提交第一条消息后启动画面消失，继续使用原有消息流。顶部状态栏、输入框、权限确认和工具执行链路不变。
 - How: 启动画面作为 `messages.length === 0` 的展示分支实现，不改变 TUI 状态机或 session runner；测试更新首屏断言，并新增提交后隐藏启动画面的覆盖。验证方式为 `npm test -- tests/tui/app.test.tsx tests/tui/permission.test.tsx`、`npm run build` 和全量 `npm test`，确认 46 个测试文件、330 条测试全部通过。
+
+## align hooks with claude code observability
+
+- commit: align hooks with claude code observability
+- time: 2026-06-14 22:56
+- Why: 现有 hook runtime 是项目自定义的扁平事件转发格式，能把事件发给 command/http，但缺少 Claude Code 风格的 matcher、标准 hook input、hook 执行开始/结束证据和 transcript 路径。为了服务可观测场景，需要把 hook 协议对齐 Claude Code 的配置形态，同时保持当前极简 Agent 的主执行边界不被 hook 改写。
+- What: hook 配置改为 `hooks.<EventName>: [{ matcher, hooks }]`，默认读取 `.claude/settings.json`，不再兼容旧的 `agent-hooks.json` 扁平格式；command/http hook 接收 Claude Code 风格 input，包含 session、cwd、transcript、事件名、原始 agent event 和工具摘要。trace 新增 `HookStart` / `HookEnd`，记录 hookId、matcher、target、outcome、耗时、HTTP 状态、exitCode 和脱敏输出；`HookStart` / `HookEnd` / `HookFailure` 不再递归触发 hook。hook 输出只进入观测 trace，不阻断工具执行、不审批权限、不修改工具输入、不向模型注入上下文。
+- How: `HookRuntime` 先按事件和 matcher 生成待执行 hook，再围绕每个 hook emit 开始/结束事件；command hook 捕获 stdout/stderr 并尝试解析 JSON 输出用于审计，http hook 复用 JSON POST sink 并把状态码返回给 hook trace。`createEventRecorder()` 先创建本地 JSONL sink，再把 trace 路径注入 hook input，并在 `SessionStart` 记录 hook 配置摘要而不是完整命令。验证方式为 `npm run build`、定向 `npm test -- tests/observability/hooks.test.ts tests/observability/events.test.ts tests/observability/recorder.test.ts tests/observability/sinks.test.ts tests/config.test.ts tests/index.test.ts tests/agent-loop.test.ts tests/agent-loop-permission.test.ts tests/agent-loop-verification.test.ts`、全量 `npm test` 和最终 `git diff --check`；全量结果为 46 个测试文件、335 条测试全部通过。

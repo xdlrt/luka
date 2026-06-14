@@ -50,24 +50,31 @@
   **说明**：参考 Codex/TraeX lifecycle hooks，但只实现当前项目需要的最小核心链路。Hook 是扩展点，不是 Agent 主流程的一部分；失败、超时和回流异常必须被记录，但默认不能中断用户任务。
 
   ```typescript
-  export interface HookDefinition {
+  export interface HookCommand {
     type: 'command' | 'http';
     command?: string;
     url?: string;
-    timeoutMs: number;
+    timeout?: number;
+    statusMessage?: string;
   }
 
-  export interface HookConfig {
-    hooks: Partial<Record<AgentEventType, HookDefinition[]>>;
+  export interface HookMatcher {
+    matcher?: string;
+    hooks: HookCommand[];
+  }
+
+  export interface HooksSettings {
+    hooks: Partial<Record<HookEvent, HookMatcher[]>>;
   }
   ```
 
   **验收标准**：
-  - 默认配置文件为 `agent-hooks.json`
+  - 默认配置文件为 `.claude/settings.json`
   - CLI 支持 `--hooks-config <path>`，配置解析失败时启动失败
-  - command hook 通过 stdin 接收事件 JSON
-  - http hook 通过 `fetch` POST 事件 JSON
-  - 同一事件类型可配置多个 hook，按配置顺序执行
+  - command hook 通过 stdin 接收 Claude Code 风格 hook input JSON
+  - http hook 通过 `fetch` POST 同一份 hook input JSON
+  - 同一事件类型可配置多个 matcher 和 hook，按配置顺序执行
+  - hook 执行记录 `HookStart` / `HookEnd`，包含 outcome、耗时、exitCode 和脱敏输出
   - hook 超时或失败时记录 hook failure 事件，不让单个 hook 阻塞主流程
 
   **关键文件**：`src/observability/hooks.ts`、`src/config.ts`、`src/index.ts`、`tests/observability/hooks.test.ts`、`tests/config.test.ts`、`tests/index.test.ts`
