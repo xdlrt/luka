@@ -121,7 +121,7 @@
 
 ---
 
-- [ ] **P4-W13-T1**: 让 eval runner 消费观测 trace
+- [x] **P4-W13-T1**: 让 eval runner 消费观测 trace
 
   **说明**：重构 eval runner：任务执行仍走真实 Agent Loop，但结果指标从 trace JSONL 汇总，而不是在 runner 里重复埋点。这样普通 CLI 使用和 eval 使用共享同一套观测证据。
 
@@ -137,7 +137,7 @@
 
 ---
 
-- [ ] **P4-W13-T2**: 实现 baseline、趋势报告和退化门禁
+- [x] **P4-W13-T2**: 实现 baseline、趋势报告和退化门禁
 
   **说明**：持续评测的核心是判断能力是否退化。门禁同时看 outcome 指标和行为指标，失败报告必须能指回具体 trace，便于复盘。
 
@@ -153,7 +153,7 @@
 
 ---
 
-- [ ] **P4-W13-T3**: 接入 CI、artifact 和可选回流
+- [x] **P4-W13-T3**: 接入 CI、artifact 和可选回流
 
   **说明**：PR 上不依赖真实密钥，主要校验 schema、hook runtime、mock eval 和报告生成；main 分支或定时任务在 secrets 存在时运行真实 eval。CI 默认关闭 HTTP feedback，只上传 trace 和 eval 结果 artifact。
 
@@ -169,7 +169,7 @@
 
 ---
 
-- [ ] **P4-W13-T4**: 文档化 hooks、观测和持续 eval
+- [x] **P4-W13-T4**: 文档化 hooks、观测和持续 eval
 
   **说明**：README 和计划文档必须清楚区分“当前已实现”和“规划中”。P4 完成后，文档要说明 hooks、事件、数据回流、eval runner、baseline 和 CI 的使用方式。
 

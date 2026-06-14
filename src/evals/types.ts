@@ -4,6 +4,7 @@ export interface EvalTask {
   id: string;
   description: string;
   difficulty: EvalDifficulty;
+  critical?: boolean;
   prompt: string;
   setup: {
     files: Record<string, string>;
@@ -19,19 +20,57 @@ export interface EvalTask {
   };
 }
 
+export type EvalFeedbackStatus = "not_configured" | "ok" | "failed";
+export type EvalSelectionMode = "task" | "suite" | "all";
+
 export interface EvalTaskResult {
-  task_id: string;
+  taskId: string;
+  attempt: number;
+  runId: string;
+  tracePath: string;
   passed: boolean;
-  turns_used: number;
-  retries: number;
-  wall_time_ms: number;
-  failure_reason?: string;
+  turnsUsed: number;
+  toolCalls: string[];
+  permissionDeniedCount: number;
+  verificationRuns: number;
+  feedbackStatus: EvalFeedbackStatus;
+  wallTimeMs: number;
+  failureReason?: string;
 }
 
 export interface EvalRunResult {
-  run_id: string;
-  started_at: string;
+  runId: string;
+  startedAt: string;
+  model: string;
+  selection: {
+    mode: EvalSelectionMode;
+    value?: string;
+  };
+  repeat: number;
+  summary: EvalSummary;
   results: EvalTaskResult[];
+  reportPath?: string;
+  dashboardPath?: string;
+  gate?: EvalGateResult;
+}
+
+export interface EvalSummary {
+  totalAttempts: number;
+  totalTasks: number;
+  passedAttempts: number;
+  passRate: number;
+  averageTurns: number;
+  averageToolCalls: number;
+  permissionDeniedCount: number;
+  verificationRuns: number;
+  flakyTasks: string[];
+  flakyRate: number;
+  feedbackSuccessRate: number | null;
+}
+
+export interface EvalGateResult {
+  passed: boolean;
+  failures: string[];
 }
 
 export function parseEvalTask(value: unknown): EvalTask {
@@ -39,6 +78,7 @@ export function parseEvalTask(value: unknown): EvalTask {
   const id = requireString(object, "id");
   const description = requireString(object, "description");
   const difficulty = parseDifficulty(requireString(object, "difficulty"));
+  const critical = optionalBoolean(object.critical, "critical");
   const prompt = requireString(object, "prompt");
   const setup = parseSetup(object.setup);
   const expectations = parseExpectations(object.expectations);
@@ -48,6 +88,7 @@ export function parseEvalTask(value: unknown): EvalTask {
     id,
     description,
     difficulty,
+    critical,
     prompt,
     setup,
     testCommand,

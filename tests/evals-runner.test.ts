@@ -11,6 +11,7 @@ import path from "node:path";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import {
   loadTasks,
+  loadSuite,
   runEvalSuite,
   runEvalTask,
   type AgentRunner,
@@ -40,12 +41,13 @@ describe("eval runner", () => {
   });
 
   it("runs a task, checks file expectations, and cleans temp dirs", async () => {
-    const runner: AgentRunner = vi.fn(async (_input, config) => {
+    const runner: AgentRunner = vi.fn(async (_input, config, _tools, recorder) => {
       await writeFile(
         path.join(config.workingDirectory, "notes.txt"),
         "done\n",
         "utf8"
       );
+      emitSuccessfulTrace(recorder);
       return {
         finalMessage: "done",
         turnsUsed: 2,
@@ -58,36 +60,38 @@ describe("eval runner", () => {
     const result = await runEvalTask(createTask("01-create-file"), runner);
 
     expect(result.passed).toBe(true);
-    expect(result.task_id).toBe("01-create-file");
+    expect(result.taskId).toBe("01-create-file");
+    expect(result.tracePath).toMatch(/\.jsonl$/);
+    await expect(readFile(result.tracePath, "utf8")).resolves.toContain(
+      "EvalTaskEnd"
+    );
     expect(runner).toHaveBeenCalledTimes(1);
     await expectNoEvalTempDir("01-create-file");
   });
 
   it("reports failed expectations", async () => {
-    const runner: AgentRunner = vi.fn(async () => ({
-      finalMessage: "done",
-      turnsUsed: 1,
-      toolsCalled: [],
-      success: true,
-      totalTokens: 2,
-    }));
+    const runner: AgentRunner = vi.fn(async (_input, _config, _tools, recorder) => {
+      emitSuccessfulTrace(recorder);
+      return agentResult(true);
+    });
 
     const result = await runEvalTask(createTask("missing-file"), runner);
 
     expect(result.passed).toBe(false);
-    expect(result.failure_reason).toMatch(/expected file missing/);
+    expect(result.failureReason).toMatch(/expected file missing/);
   });
 
   it("writes suite results for --all", async () => {
     const tasksDir = path.join(tempDir, "tasks");
     const resultsDir = path.join(tempDir, "results");
     await writeTask(tasksDir, "01.json", createTask("01-create-file"));
-    const runner: AgentRunner = vi.fn(async (_input, config) => {
+    const runner: AgentRunner = vi.fn(async (_input, config, _tools, recorder) => {
       await writeFile(
         path.join(config.workingDirectory, "notes.txt"),
         "done\n",
         "utf8"
       );
+      emitSuccessfulTrace(recorder);
       return {
         finalMessage: "done",
         turnsUsed: 1,
@@ -107,10 +111,11 @@ describe("eval runner", () => {
     expect(result.results).toHaveLength(1);
     expect(result.results[0]?.passed).toBe(true);
     const saved = await readFile(
-      path.join(resultsDir, `${result.run_id}.json`),
+      path.join(resultsDir, `${result.runId}.json`),
       "utf8"
     );
     expect(saved).toContain("01-create-file");
+    expect(result.reportPath).toBe(path.join(resultsDir, "latest-summary.md"));
   });
 
   it("runs a selected task only", async () => {
@@ -118,12 +123,13 @@ describe("eval runner", () => {
     const resultsDir = path.join(tempDir, "results");
     await writeTask(tasksDir, "01.json", createTask("01-create-file"));
     await writeTask(tasksDir, "02.json", createTask("02-other"));
-    const runner: AgentRunner = vi.fn(async (_input, config) => {
+    const runner: AgentRunner = vi.fn(async (_input, config, _tools, recorder) => {
       await writeFile(
         path.join(config.workingDirectory, "notes.txt"),
         "done\n",
         "utf8"
       );
+      emitSuccessfulTrace(recorder);
       return {
         finalMessage: "done",
         turnsUsed: 1,
@@ -140,18 +146,76 @@ describe("eval runner", () => {
       runner,
     });
 
-    expect(result.results.map((item) => item.task_id)).toEqual(["02-other"]);
+    expect(result.results.map((item) => item.taskId)).toEqual(["02-other"]);
     expect(runner).toHaveBeenCalledTimes(1);
+  });
+
+  it("loads and runs a named suite", async () => {
+    const tasksDir = path.join(tempDir, "tasks");
+    const suitesDir = path.join(tempDir, "suites");
+    const resultsDir = path.join(tempDir, "results");
+    await writeTask(tasksDir, "01.json", createTask("01-create-file"));
+    await writeTask(tasksDir, "02.json", createTask("02-other"));
+    await writeSuite(suitesDir, "smoke", ["02-other"]);
+
+    expect(await loadSuite(suitesDir, "smoke")).toEqual({
+      name: "smoke",
+      taskIds: ["02-other"],
+    });
+
+    const result = await runEvalSuite({
+      suite: "smoke",
+      tasksDir,
+      suitesDir,
+      resultsDir,
+      mock: true,
+    });
+
+    expect(result.selection).toEqual({ mode: "suite", value: "smoke" });
+    expect(result.results.map((item) => item.taskId)).toEqual(["02-other"]);
+  });
+
+  it("supports repeat and marks flaky tasks", async () => {
+    const tasksDir = path.join(tempDir, "tasks");
+    const resultsDir = path.join(tempDir, "results");
+    await writeTask(tasksDir, "01.json", createTask("01-create-file"));
+    const runner = vi
+      .fn<AgentRunner>()
+      .mockImplementationOnce(async (_input, config, _tools, recorder) => {
+        await writeFile(
+          path.join(config.workingDirectory, "notes.txt"),
+          "done\n",
+          "utf8"
+        );
+        emitSuccessfulTrace(recorder);
+        return agentResult(true);
+      })
+      .mockImplementationOnce(async (_input, _config, _tools, recorder) => {
+        emitSuccessfulTrace(recorder);
+        return agentResult(true);
+      });
+
+    const result = await runEvalSuite({
+      all: true,
+      repeat: 2,
+      tasksDir,
+      resultsDir,
+      runner,
+    });
+
+    expect(result.results).toHaveLength(2);
+    expect(result.summary.flakyTasks).toEqual(["01-create-file"]);
   });
 
   it("records eval task start and end events", async () => {
     const recorder = createRecorder();
-    const runner: AgentRunner = vi.fn(async (_input, config) => {
+    const runner: AgentRunner = vi.fn(async (_input, config, _tools, recorder) => {
       await writeFile(
         path.join(config.workingDirectory, "notes.txt"),
         "done\n",
         "utf8"
       );
+      emitSuccessfulTrace(recorder);
       return {
         finalMessage: "done",
         turnsUsed: 1,
@@ -223,6 +287,19 @@ async function writeTask(
   );
 }
 
+async function writeSuite(
+  suitesDir: string,
+  name: string,
+  taskIds: string[]
+): Promise<void> {
+  await mkdir(suitesDir, { recursive: true });
+  await writeFile(
+    path.join(suitesDir, `${name}.json`),
+    `${JSON.stringify({ name, taskIds }, null, 2)}\n`,
+    "utf8"
+  );
+}
+
 async function expectNoEvalTempDir(taskId: string): Promise<void> {
   const entries = await readdir(os.tmpdir());
   expect(
@@ -244,4 +321,19 @@ function createRecorder(): EventRecorderLike {
     flush: vi.fn(async () => {}),
     close: vi.fn(async () => {}),
   };
+}
+
+function agentResult(success: boolean) {
+  return {
+    finalMessage: "done",
+    turnsUsed: 1,
+    toolsCalled: [],
+    success,
+    totalTokens: 2,
+  };
+}
+
+function emitSuccessfulTrace(recorder: EventRecorderLike | undefined): void {
+  recorder?.emit("LLMResponse", { turn: 1 });
+  recorder?.emit("Stop", { success: true, finalState: "done" });
 }

@@ -9,6 +9,7 @@
     "ci": "npm run build && npm test",
     "dev": "tsc --watch",
     "eval": "npm run build && node dist/evals/runner.js",
+    "eval:mock": "npm run build && node dist/evals/runner.js --suite smoke --mock",
     "start": "npm run build && node dist/index.js",
     "test": "vitest run"
   },
