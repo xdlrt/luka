@@ -106,7 +106,7 @@ describe("EventRecorder", () => {
 
     recorder.emitHookFailure(
       source,
-      { type: "http", url: "https://bad.example", timeoutMs: 1 },
+      { type: "http", url: "https://bad.example", timeout: 1 },
       new Error("network failed")
     );
     await recorder.flush();
@@ -121,5 +121,23 @@ describe("EventRecorder", () => {
         }),
       })
     );
+  });
+
+  it("does not dispatch hook runtime events recursively", async () => {
+    const sink: EventSink = { write: vi.fn(async () => {}) };
+    const hookRuntime = { dispatch: vi.fn(async () => {}) };
+    const recorder = new EventRecorder({
+      runId: "run-1",
+      sinks: [sink],
+      hookRuntime: hookRuntime as never,
+    });
+
+    recorder.emit("HookStart", { hookId: "hook-1" });
+    recorder.emit("HookEnd", { hookId: "hook-1" });
+    recorder.emit("HookFailure", { hookId: "hook-1" });
+    await recorder.flush();
+
+    expect(hookRuntime.dispatch).not.toHaveBeenCalled();
+    expect(sink.write).toHaveBeenCalledTimes(3);
   });
 });

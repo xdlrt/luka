@@ -68,7 +68,7 @@ export async function postJson(
   url: string,
   body: unknown,
   timeoutMs: number
-): Promise<void> {
+): Promise<{ status: number; statusText: string }> {
   const controller = new AbortController();
   const timeout = setTimeout(() => controller.abort(), timeoutMs);
   try {
@@ -81,6 +81,7 @@ export async function postJson(
     if (!response.ok) {
       throw new Error(`HTTP ${response.status} ${response.statusText}`);
     }
+    return { status: response.status, statusText: response.statusText };
   } finally {
     clearTimeout(timeout);
   }

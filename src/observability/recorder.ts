@@ -1,7 +1,7 @@
 import { randomUUID } from "node:crypto";
 import type { AgentEvent, AgentEventType } from "./events.js";
 import { createAgentEvent, summarizeForEvent } from "./events.js";
-import { HookRuntime, type HookDefinition } from "./hooks.js";
+import { HookRuntime, type HookCommand } from "./hooks.js";
 import type { EventSink } from "./sinks.js";
 
 export interface EventRecorderOptions {
@@ -47,7 +47,7 @@ export class EventRecorder {
 
   emitHookFailure(
     event: AgentEvent,
-    hook: HookDefinition,
+    hook: HookCommand,
     error: Error
   ): AgentEvent {
     return this.emit("HookFailure", {
@@ -96,7 +96,7 @@ export class EventRecorder {
       const event = this.queue.shift();
       if (event === undefined) continue;
       await this.write(event);
-      if (event.type !== "HookFailure") {
+      if (!isHookRuntimeEvent(event.type)) {
         try {
           await this.hookRuntime?.dispatch(event);
         } catch (cause) {
@@ -154,4 +154,8 @@ export interface EventRecorderLike {
   ): AgentEvent;
   flush?(options?: RecorderDrainOptions): Promise<void>;
   close?(options?: RecorderDrainOptions): Promise<void>;
+}
+
+function isHookRuntimeEvent(type: AgentEventType): boolean {
+  return type === "HookStart" || type === "HookEnd" || type === "HookFailure";
 }

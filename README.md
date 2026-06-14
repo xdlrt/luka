@@ -77,7 +77,7 @@ asciinema play docs/demo.cast
 | `TEST_COMMAND` | 否 | 无 | 编辑成功后自动运行的测试命令。 |
 | `MAX_RETRIES` | 否 | `3` | 自动验证失败后的最大重试次数，必须是正整数。 |
 | `VERBOSE` | 否 | `false` | 设置为 `1` 或 `true` 时输出更详细日志。 |
-| `HOOKS_CONFIG` | 否 | `agent-hooks.json` | hook 配置文件路径；CLI `--hooks-config` 优先级更高。 |
+| `HOOKS_CONFIG` | 否 | `.claude/settings.json` | Claude Code 风格 hook 配置文件路径；CLI `--hooks-config` 优先级更高。 |
 | `OBSERVABILITY_DIR` | 否 | `.coding-agent/observability` | CLI trace JSONL 输出目录。 |
 | `OBSERVABILITY_FEEDBACK_URL` | 否 | 无 | 配置后启用 HTTP feedback sink。 |
 | `OBSERVABILITY_FEEDBACK_TIMEOUT_MS` | 否 | `3000` | HTTP feedback 单次请求超时，必须是正整数。 |
@@ -89,9 +89,42 @@ asciinema play docs/demo.cast
 | `--test-command <command>` | 指定编辑后自动运行的测试命令，优先级高于 `TEST_COMMAND`。 |
 | `--max-retries <number>` | 指定自动验证最大重试次数，必须是正整数。 |
 | `--verbose`, `-v` | 输出详细运行日志。 |
-| `--hooks-config <path>` | 读取 hook 配置 JSON，按事件类型执行 command/http hook。 |
+| `--hooks-config <path>` | 读取 Claude Code 风格 hook 配置 JSON，按 matcher 执行 command/http hook。 |
 
 CLI 参数会从用户任务中剥离，不会作为 prompt 内容传给模型。
+
+Hook 配置使用 Claude Code 的 `hooks.<EventName>: [{ matcher, hooks }]` 形态。当前实现只支持可观测场景的 `command` 和 `http` hook；hook 输出会被记录进 trace，但不会阻断工具执行、审批权限、修改工具输入或向模型注入上下文。
+
+```json
+{
+  "hooks": {
+    "PreToolUse": [
+      {
+        "matcher": "read_file",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node scripts/audit-hook.js",
+            "timeout": 2,
+            "statusMessage": "auditing read"
+          }
+        ]
+      }
+    ],
+    "SessionEnd": [
+      {
+        "hooks": [
+          {
+            "type": "http",
+            "url": "https://example.com/hooks/session-end",
+            "timeout": 3
+          }
+        ]
+      }
+    ]
+  }
+}
+```
 
 ## Architecture Boundary
 
