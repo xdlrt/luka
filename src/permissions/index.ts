@@ -24,10 +24,15 @@ export interface PermissionOptions {
 }
 
 export function createDefaultPermissionIO(): PermissionIO {
-  const readline = createInterface({
-    input: process.stdin,
-    output: process.stdout,
-  });
+  let readline: ReturnType<typeof createInterface> | undefined;
+
+  function getReadline(): ReturnType<typeof createInterface> {
+    readline ??= createInterface({
+      input: process.stdin,
+      output: process.stdout,
+    });
+    return readline;
+  }
 
   return {
     write(message: string): void {
@@ -35,9 +40,10 @@ export function createDefaultPermissionIO(): PermissionIO {
     },
     async question(prompt: string): Promise<string> {
       try {
-        return await readline.question(prompt);
+        return await getReadline().question(prompt);
       } finally {
-        readline.close();
+        readline?.close();
+        readline = undefined;
       }
     },
   };

@@ -264,6 +264,14 @@
 - What: 新增 `retry-loop` 状态机记录验证失败次数、失败摘要和模型动作，测试失败时注入 `Tests failed. Please fix the issues:`，达到 `maxRetries` 后注入 `Unable to fix after n attempts` 并继续主对话；`AppConfig` 与 CLI 新增 `maxRetries` 和 `verbose`，logger 替换 Agent Loop 中直接 `console.log` 的 turn/tool/verify 输出。P2-W7 checklist 标记为完成，并新增完整自修复 E2E，证明失败测试能驱动下一轮编辑直到通过。
 - How: 重试模块只处理状态和消息生成，不直接调用 LLM 或工具，Agent Loop 仍负责 tool call 协议、权限、安全和测试执行；这样既能实现 W7 行为，又不抢 W8 Harness 的边界。验证覆盖配置读取与非法值、CLI 参数、logger 注入、retry 状态机、Agent Loop 失败回喂/上限停止/关闭验证/工具错误不验证，以及临时 `reverseString` 项目的真实编辑和测试执行。验证方式为 `npm run build`、目标 W7/W6 测试和全量 `npm test`，确认 25 个测试文件和 171 条测试全部通过。
 
+## add harness and p2 eval runner
+
+- commit: add harness and p2 eval runner
+- time: 2026-06-14 11:50
+- Why: W6/W7 已经把编辑后验证和有限重试接进 Agent Loop，但权限、安全、工具执行和验证触发仍散落在循环里；如果继续扩展 eval 或后续可观测事件，Agent Loop 会重新承担控制层职责。P2-W8 需要先把执行控制收敛成 Harness，再建立首版可重复运行的 eval 基准入口。
+- What: 新增 `Harness` 作为唯一工具执行控制层，按工具存在检查、沙箱/危险命令规则、权限确认、工具执行、编辑后验证的顺序编排；Agent Loop 只保留 LLM 消息链路、tool call id 回传和停止条件。新增 `src/evals/types.ts`、`src/evals/runner.ts`、5 个 JSON 基准任务和 `npm run eval`，runner 会创建临时项目、运行真实 Agent、检查文件/输出/测试期望并保存 JSON 结果。P1/P2 里程碑和 P2-W8 checklist 标记完成，并在 README 记录 5/5 通过的真实 baseline。
+- How: Harness 复用现有 permission/rules/sandbox/test-runner/format-results/retry-loop 模块，不改变安全语义：`autoApprove` 只跳过人工确认，不能绕过拦截规则。eval runner 放入 `src/evals` 以复用现有 TypeScript 编译链路，避免为 `tsx` 引入新依赖；单测通过 fake runner 验证任务读取、临时目录、期望检查和结果落盘。真实 baseline 使用 `.env` 中的 Ark 配置和 `deepseek-v4-flash-260425` 跑通 5 个任务，结果保存为 `evals/results/2026-06-14T03-51-17-197Z.json`；运行时发现 auto-approve 仍会提前创建 readline listener，随后改为 lazy 初始化，避免 eval 多任务场景触发 listener warning。验证方式为 `npm run build`、目标 Harness/Agent Loop/eval 测试、全量 `npm test` 和 `npm run eval -- --all`。
+
 ## add npm start cli shortcut
 
 - commit: add npm start cli shortcut

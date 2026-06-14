@@ -1,0 +1,17 @@
+{
+  "id": "01-create-file",
+  "description": "Create a small README file with required content.",
+  "difficulty": "easy",
+  "prompt": "Create notes.txt with exactly this content: P2 eval create file passed.",
+  "setup": {
+    "files": {}
+  },
+  "expectations": {
+    "files": [
+      {
+        "path": "notes.txt",
+        "contains": ["P2 eval create file passed."]
+      }
+    ]
+  }
+}

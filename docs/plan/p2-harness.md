@@ -269,7 +269,7 @@
 
 ---
 
-- [ ] **P2-W8-T1**: 统一权限 + 规则 + 沙箱 + 验证为 Harness 类
+- [x] **P2-W8-T1**: 统一权限 + 规则 + 沙箱 + 验证为 Harness 类
 
   **说明**：创建 `src/harness.ts` 作为唯一的控制层。Agent Loop 只与 Harness 交互，不直接感知各子模块。
 
@@ -294,7 +294,7 @@
 
 ---
 
-- [ ] **P2-W8-T2**: 设计 eval 任务格式并创建 5 个基准任务
+- [x] **P2-W8-T2**: 设计 eval 任务格式并创建 5 个基准任务
 
   **说明**：创建 `evals/` 目录。定义 eval 任务格式（JSON）：任务描述、初始项目状态（文件列表）、预期结果。创建 5 个难度递进的小任务。
 
@@ -320,26 +320,26 @@
   - Task 05 (medium)：带测试重构
   - 每个任务有明确的 setup 文件和可验证的期望
 
-  **关键文件**：`evals/tasks/types.ts`、`evals/tasks/01-create-file.json` 至 `05-refactor.json`
+  **关键文件**：`src/evals/types.ts`、`evals/tasks/01-create-file.json` 至 `05-refactor.json`
 
 ---
 
-- [ ] **P2-W8-T3**: 构建 eval 执行器
+- [x] **P2-W8-T3**: 构建 eval 执行器
 
   **说明**：创建 `evals/runner.ts`：(1) 读取任务 JSON，(2) 创建临时目录和文件，(3) 用 auto-approve 模式运行 Agent，(4) 检查期望，(5) 记录结果（pass/fail、轮数、重试次数、耗时）。
 
   **验收标准**：
-  - 单任务运行：`npx tsx evals/runner.ts --task 01-create-file`
-  - 全量运行：`npx tsx evals/runner.ts --all`
+  - 单任务运行：`npm run eval -- --task 01-create-file`
+  - 全量运行：`npm run eval -- --all`
   - 结果输出 JSON 到 `evals/results/{timestamp}.json`
   - 记录：task_id、passed、turns_used、retries、wall_time_ms
   - 每个任务后清理临时目录
 
-  **关键文件**：`evals/runner.ts`、`evals/results/.gitkeep`
+  **关键文件**：`src/evals/runner.ts`、`evals/results/.gitkeep`
 
 ---
 
-- [ ] **P2-W8-T4**: 运行 eval、记录基线、更新 README
+- [x] **P2-W8-T4**: 运行 eval、记录基线、更新 README
 
   **说明**：运行完整 eval 套件，记录结果为 P2 基线。在 README 中添加 "Eval Results" 章节。
 

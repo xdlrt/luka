@@ -1,73 +1,13 @@
 import { describe, expect, it, vi } from "vitest";
-import { runAgentLoop, type SafetyChecker } from "../src/agent-loop.js";
+import { runAgentLoop } from "../src/agent-loop.js";
+import type { HarnessLike } from "../src/harness.js";
 import { ToolRegistry, type ToolDefinition } from "../src/tools/index.js";
-import type { LLMClient } from "../src/llm-client.js";
-import type {
-  ChatCompletionResponse,
-  Message,
-  ToolCall,
-} from "../src/types.js";
-
-const baseConfig = {
-  apiKey: "key-123",
-  baseURL: "https://ark.example.com/api/v3",
-  model: "doubao-test",
-  maxTurns: 20,
-  workingDirectory: "/tmp",
-  autoApprove: false,
-  maxRetries: 3,
-  verbose: false,
-};
-
-const allowSafety: SafetyChecker = vi.fn(async () => ({ allowed: true }));
-
-function textResponse(content: string): ChatCompletionResponse {
-  return {
-    id: "resp",
-    model: "doubao-test",
-    choices: [
-      {
-        index: 0,
-        message: { role: "assistant", content },
-        finish_reason: "stop",
-      },
-    ],
-    usage: { prompt_tokens: 1, completion_tokens: 1, total_tokens: 2 },
-  };
-}
-
-function toolCallResponse(
-  calls: { id: string; name: string; args: Record<string, unknown> }[]
-): ChatCompletionResponse {
-  const tool_calls: ToolCall[] = calls.map((c) => ({
-    id: c.id,
-    type: "function",
-    function: { name: c.name, arguments: JSON.stringify(c.args) },
-  }));
-  return {
-    id: "resp",
-    model: "doubao-test",
-    choices: [
-      {
-        index: 0,
-        message: { role: "assistant", content: null, tool_calls },
-        finish_reason: "tool_calls",
-      },
-    ],
-    usage: { prompt_tokens: 1, completion_tokens: 1, total_tokens: 2 },
-  };
-}
-
-function makeClient(responses: ChatCompletionResponse[]): LLMClient {
-  let index = 0;
-  const sendMessage = vi.fn(async () => {
-    const response = responses[index];
-    index += 1;
-    if (response === undefined) throw new Error("no more mock responses");
-    return response;
-  });
-  return { sendMessage } as unknown as LLMClient;
-}
+import {
+  baseConfig,
+  createClient,
+  textResponse,
+  toolCallResponse,
+} from "./test-helpers.js";
 
 function createTool(
   name: string,
@@ -82,12 +22,25 @@ function createTool(
   };
 }
 
+function createHarness(
+  executeTool: HarnessLike["executeTool"] = vi.fn(async () => ({
+    content: "echo-output",
+  }))
+): HarnessLike {
+  return {
+    beginTurn: vi.fn(),
+    executeTool,
+    endTurn: vi.fn(),
+  };
+}
+
 describe("runAgentLoop", () => {
   it("returns directly when the model makes no tool calls", async () => {
-    const client = makeClient([textResponse("hello answer")]);
+    const { client } = createClient([textResponse("hello answer")]);
     const tools = new ToolRegistry();
+    const harness = createHarness();
 
-    const result = await runAgentLoop("hi", baseConfig, tools, client);
+    const result = await runAgentLoop("hi", baseConfig, tools, client, harness);
 
     expect(result).toEqual({
       finalMessage: "hello answer",
@@ -95,48 +48,52 @@ describe("runAgentLoop", () => {
       toolsCalled: [],
       success: true,
     });
+    expect(harness.executeTool).not.toHaveBeenCalled();
   });
 
-  it("executes a tool call, feeds the result back, then finishes", async () => {
-    const client = makeClient([
+  it("delegates a tool call to the harness, feeds the result back, then finishes", async () => {
+    const { client } = createClient([
       toolCallResponse([{ id: "call-1", name: "echo", args: { x: 1 } }]),
       textResponse("done"),
     ]);
     const tools = new ToolRegistry();
-    const echo = createTool("echo", "echo-output");
-    tools.register(echo);
+    tools.register(createTool("echo", "unused"));
+    const harness = createHarness(
+      vi.fn(async () => ({ content: "echo-output" }))
+    );
 
     const result = await runAgentLoop(
       "run echo",
       baseConfig,
       tools,
       client,
-      undefined,
-      allowSafety
+      harness
     );
 
     expect(result.success).toBe(true);
     expect(result.turnsUsed).toBe(2);
     expect(result.toolsCalled).toEqual(["echo"]);
     expect(result.finalMessage).toBe("done");
-    expect(echo.execute).toHaveBeenCalledWith({ x: 1 });
+    expect(harness.executeTool).toHaveBeenCalledWith(
+      "echo",
+      { x: 1 },
+      tools,
+      "tools: echo"
+    );
   });
 
   it("feeds tool results back using the real tool call id", async () => {
-    const responses = [
+    const { client, sentMessages } = createClient([
       toolCallResponse([{ id: "call-xyz", name: "echo", args: {} }]),
       textResponse("ok"),
-    ];
-    const sentMessages: Message[][] = [];
-    const sendMessage = vi.fn(async (messages: Message[]) => {
-      sentMessages.push(messages.map((m) => ({ ...m })));
-      return responses.shift() as ChatCompletionResponse;
-    });
-    const client = { sendMessage } as unknown as LLMClient;
+    ]);
     const tools = new ToolRegistry();
     tools.register(createTool("echo", "echo-output"));
+    const harness = createHarness(
+      vi.fn(async () => ({ content: "echo-output" }))
+    );
 
-    await runAgentLoop("go", baseConfig, tools, client, undefined, allowSafety);
+    await runAgentLoop("go", baseConfig, tools, client, harness);
 
     const secondCallMessages = sentMessages[1];
     const toolMessage = secondCallMessages.find((m) => m.role === "tool");
@@ -145,7 +102,7 @@ describe("runAgentLoop", () => {
   });
 
   it("handles multiple sequential tool calls across turns", async () => {
-    const client = makeClient([
+    const { client } = createClient([
       toolCallResponse([{ id: "c1", name: "read", args: {} }]),
       toolCallResponse([{ id: "c2", name: "write", args: {} }]),
       textResponse("all done"),
@@ -153,14 +110,19 @@ describe("runAgentLoop", () => {
     const tools = new ToolRegistry();
     tools.register(createTool("read", "content"));
     tools.register(createTool("write", "written"));
+    const harness = createHarness(
+      vi
+        .fn()
+        .mockResolvedValueOnce({ content: "content" })
+        .mockResolvedValueOnce({ content: "written" })
+    );
 
     const result = await runAgentLoop(
       "task",
       baseConfig,
       tools,
       client,
-      undefined,
-      allowSafety
+      harness
     );
 
     expect(result.toolsCalled).toEqual(["read", "write"]);
@@ -169,21 +131,21 @@ describe("runAgentLoop", () => {
   });
 
   it("stops and reports failure when maxTurns is reached", async () => {
-    const client = makeClient([
+    const { client } = createClient([
       toolCallResponse([{ id: "c1", name: "echo", args: {} }]),
       toolCallResponse([{ id: "c2", name: "echo", args: {} }]),
       toolCallResponse([{ id: "c3", name: "echo", args: {} }]),
     ]);
     const tools = new ToolRegistry();
     tools.register(createTool("echo", "out"));
+    const harness = createHarness();
 
     const result = await runAgentLoop(
       "loop",
       { ...baseConfig, maxTurns: 2 },
       tools,
       client,
-      undefined,
-      allowSafety
+      harness
     );
 
     expect(result.success).toBe(false);
@@ -191,28 +153,66 @@ describe("runAgentLoop", () => {
     expect(result.toolsCalled).toEqual(["echo", "echo"]);
   });
 
-  it("passes autoApprove to the permission checker", async () => {
-    const client = makeClient([
-      toolCallResponse([{ id: "call-1", name: "echo", args: { x: 1 } }]),
+  it("injects verification messages returned by the harness", async () => {
+    const { client, sentMessages } = createClient([
+      toolCallResponse([
+        { id: "call-1", name: "edit_file", args: { path: "a.ts" } },
+      ]),
+      textResponse("done"),
+    ]);
+    const tools = new ToolRegistry();
+    tools.register(createTool("edit_file", "ok"));
+    const harness = createHarness(
+      vi.fn(async () => ({
+        content: "ok",
+        verificationMessage: "[verification] All tests passed",
+      }))
+    );
+
+    await runAgentLoop("fix", baseConfig, tools, client, harness);
+
+    expect(
+      sentMessages[1].some(
+        (message) =>
+          message.role === "assistant" &&
+          message.content === "[verification] All tests passed"
+      )
+    ).toBe(true);
+  });
+
+  it("marks turn boundaries on the harness", async () => {
+    const { client } = createClient([
+      toolCallResponse([{ id: "call-1", name: "echo", args: {} }]),
       textResponse("done"),
     ]);
     const tools = new ToolRegistry();
     tools.register(createTool("echo", "echo-output"));
-    const permissionCheck = vi.fn(async () => ({ approved: true as const }));
+    const harness = createHarness();
 
-    await runAgentLoop(
-      "run echo",
-      { ...baseConfig, autoApprove: true },
+    await runAgentLoop("run echo", baseConfig, tools, client, harness);
+
+    expect(harness.beginTurn).toHaveBeenCalledTimes(2);
+    expect(harness.endTurn).toHaveBeenCalledTimes(1);
+  });
+
+  it("does not call ToolRegistry.execute directly", async () => {
+    const { client } = createClient([
+      toolCallResponse([{ id: "call-1", name: "echo", args: {} }]),
+      textResponse("done"),
+    ]);
+    const tools = new ToolRegistry();
+    tools.register(createTool("echo", "echo-output"));
+    const executeSpy = vi.spyOn(tools, "execute");
+    const harness = createHarness();
+
+    await runAgentLoop("run echo", baseConfig, tools, client, harness);
+
+    expect(executeSpy).not.toHaveBeenCalled();
+    expect(harness.executeTool).toHaveBeenCalledWith(
+      "echo",
+      {},
       tools,
-      client,
-      permissionCheck,
-      allowSafety
-    );
-
-    expect(permissionCheck).toHaveBeenCalledWith(
-      expect.objectContaining({ name: "echo" }),
-      { x: 1 },
-      { autoApprove: true }
+      "tools: echo"
     );
   });
 });

@@ -1,0 +1,41 @@
+{
+  "run_id": "2026-06-14T03-51-17-197Z",
+  "started_at": "2026-06-14T03:51:17.197Z",
+  "results": [
+    {
+      "task_id": "01-create-file",
+      "passed": true,
+      "turns_used": 2,
+      "retries": 0,
+      "wall_time_ms": 3871
+    },
+    {
+      "task_id": "02-fix-typo",
+      "passed": true,
+      "turns_used": 3,
+      "retries": 0,
+      "wall_time_ms": 8087
+    },
+    {
+      "task_id": "03-fix-logic-bug",
+      "passed": true,
+      "turns_used": 5,
+      "retries": 0,
+      "wall_time_ms": 15357
+    },
+    {
+      "task_id": "04-add-function",
+      "passed": true,
+      "turns_used": 3,
+      "retries": 0,
+      "wall_time_ms": 8518
+    },
+    {
+      "task_id": "05-refactor",
+      "passed": true,
+      "turns_used": 6,
+      "retries": 0,
+      "wall_time_ms": 16372
+    }
+  ]
+}

@@ -194,7 +194,19 @@ npm run eval -- --all
 
 runner 会先构建项目，再用真实 Agent Loop 执行任务，并把结果写入 `evals/results/{timestamp}.json`。真实 eval 需要有效的 `ARK_API_KEY` 和 `ARK_MODEL`；没有密钥时只能运行 schema 和 runner 单测，不能生成正式 P2 baseline。
 
-截至 `2026-06-14 11:50`，本次改动已通过 mock runner 级别的 eval 单测，尚未记录真实 P2 baseline。
+### P2 Baseline
+
+| Run | Model | Passed | Notes |
+| --- | --- | --- | --- |
+| `2026-06-14T03-51-17-197Z` | `deepseek-v4-flash-260425` | 5/5 | 保存于 `evals/results/2026-06-14T03-51-17-197Z.json`。 |
+
+| Task | Result | Turns | Retries |
+| --- | --- | --- | --- |
+| `01-create-file` | pass | 2 | 0 |
+| `02-fix-typo` | pass | 3 | 0 |
+| `03-fix-logic-bug` | pass | 5 | 0 |
+| `04-add-function` | pass | 3 | 0 |
+| `05-refactor` | pass | 6 | 0 |
 
 GitHub Actions 当前在 push 和 pull request 上运行 Node 20、安装依赖并执行 `npm run ci`。
 
