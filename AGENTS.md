@@ -6,14 +6,15 @@
 
 ## 项目边界
 
-这是一个极简 coding agent。当前真实能力已经覆盖 P1-P4 主链路：CLI/REPL 接收用户输入，Agent Loop 调用 OpenAI-compatible `chat/completions`，解析模型返回的 `tool_calls`，通过 `Harness` 统一编排权限、安全、工具执行和编辑后验证，并把工具结果回传给模型继续决策。
+这是一个极简 coding agent。当前真实能力已经覆盖 P1-P5：CLI/TUI 接收用户输入，Agent Loop 调用 OpenAI-compatible `chat/completions`，解析模型返回的 `tool_calls`，通过 `Harness` 统一编排权限、安全、工具执行和编辑后验证，并把工具结果回传给模型继续决策；仓库也已完成本地可打包、可链接、可演示的开源发布打磨。
 
 - 当前默认工具包括 `read_file`、`write_file`、`edit_file`、`run_command`、`grep`、`glob`、`todo_write`。
 - 当前已有消息历史管理、上下文压缩、长文件分段读取、TodoWrite 式规划状态、基础 observability events、hooks、trace、mock/真实 eval runner、suite/repeat/report/baseline check。
 - 当前已有基础 Harness：工作目录边界检查、写入和命令权限确认、基础危险命令规则、编辑后测试验证和重试状态。
-- 当前仍不是完整 IDE Agent：没有 GUI、插件市场、多模型适配层、检索增强 RAG、完整 OS 级沙箱、成熟命令安全策略、发布级 npm bin 打包或长期趋势运营数据。
+- 当前已有本地 npm bin 入口、`files` 白名单、Node engines、README、脚本化 demo、MIT License、CONTRIBUTING、GitHub Issue/PR 模板、技术文章草稿和项目复盘；但不会自动执行 `npm publish`，也不应描述成已经完成 npm registry 发布运营。
+- 当前仍不是完整 IDE Agent：没有 GUI、插件市场、多模型适配层、检索增强 RAG、完整 OS 级沙箱、成熟命令安全策略、正式 continuous baseline 快照或长期趋势运营数据。
 
-禁止在代码、文档、提示词或 CLI 输出中暗示未实现或未成熟能力已经存在。尤其禁止声称当前具备完整沙箱、完整危险命令防护、任意命令安全执行、成熟长期趋势平台、发布级包分发或真正的检索增强。
+禁止在代码、文档、提示词或 CLI 输出中暗示未实现或未成熟能力已经存在。尤其禁止声称当前具备完整沙箱、完整危险命令防护、任意命令安全执行、成熟长期趋势平台、npm registry 发布运营或真正的检索增强。
 
 ## 强约束
 

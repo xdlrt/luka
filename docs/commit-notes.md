@@ -1,5 +1,13 @@
 # Commit Notes
 
+## docs: streamline project docs
+
+- commit: docs: streamline project docs
+- time: 2026-06-14 18:36
+- Why: P5 发布打磨完成后，README 仍保留较多阶段性说明、baseline 细表和重复能力描述，AGENTS 也还停留在 P1-P4 状态，会让新读者和后续维护者把已完成的本地打包能力与仍未成熟的 npm registry 发布、安全沙箱、长期趋势能力混在一起。
+- What: 将 README 收缩为更适合入口阅读的版本，保留快速启动、配置、架构边界、工具安全、开发和 eval 入口；同步 AGENTS 的项目边界到 P1-P5，明确本地 npm bin、demo、License、贡献模板、文章和复盘已经完成，同时继续禁止把未发布到 npm registry、完整 OS 沙箱、成熟命令安全或真正 RAG 描述成现状。
+- How: 以“README 给使用者快速入口、AGENTS 给维护者强约束”为分工进行文档瘦身，不改变运行时代码和计划 checklist；验证重点是保留关键能力边界和命令入口，已用 `npm run build` 确认工程仍可编译，并用关键词检查确认 AGENTS 没有残留过时的 P1-P4 或发布状态表述。
+
 ## finish P5-W14 release polish
 
 - commit: finish P5-W14 release polish
