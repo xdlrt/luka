@@ -2,6 +2,7 @@ import { describe, expect, it, vi } from "vitest";
 import {
   runAgentLoop,
   type PermissionChecker,
+  type SafetyChecker,
 } from "../src/agent-loop.js";
 import type { LLMClient } from "../src/llm-client.js";
 import { ToolRegistry, type ToolDefinition } from "../src/tools/index.js";
@@ -100,6 +101,10 @@ function reject(reason = "Cancelled by user"): PermissionChecker {
   return vi.fn(async () => ({ approved: false, reason }));
 }
 
+function allowSafety(): SafetyChecker {
+  return vi.fn(async () => ({ allowed: true }));
+}
+
 describe("runAgentLoop permission integration", () => {
   it("checks permission before executing an approved read tool", async () => {
     const { client, sentMessages } = createClient([
@@ -118,7 +123,8 @@ describe("runAgentLoop permission integration", () => {
       baseConfig,
       tools,
       client,
-      permissionCheck
+      permissionCheck,
+      allowSafety()
     );
 
     expect(result.success).toBe(true);
@@ -146,7 +152,14 @@ describe("runAgentLoop permission integration", () => {
     tools.register(writeFile);
     const permissionCheck = approve();
 
-    await runAgentLoop("write notes", baseConfig, tools, client, permissionCheck);
+    await runAgentLoop(
+      "write notes",
+      baseConfig,
+      tools,
+      client,
+      permissionCheck,
+      allowSafety()
+    );
 
     expect(permissionCheck).toHaveBeenCalledWith(writeFile, input, {
       autoApprove: false,
@@ -175,7 +188,8 @@ describe("runAgentLoop permission integration", () => {
       baseConfig,
       tools,
       client,
-      permissionCheck
+      permissionCheck,
+      allowSafety()
     );
 
     expect(result.success).toBe(true);
@@ -207,7 +221,8 @@ describe("runAgentLoop permission integration", () => {
       baseConfig,
       tools,
       client,
-      reject()
+      reject(),
+      allowSafety()
     );
 
     expect(result.finalMessage).toBe("I will not run it.");
@@ -232,7 +247,8 @@ describe("runAgentLoop permission integration", () => {
       baseConfig,
       tools,
       client,
-      permissionCheck
+      permissionCheck,
+      allowSafety()
     );
 
     expect(result.success).toBe(true);
@@ -267,7 +283,14 @@ describe("runAgentLoop permission integration", () => {
         : { approved: false, reason: "Cancelled by user" }
     );
 
-    await runAgentLoop("mix", baseConfig, tools, client, permissionCheck);
+    await runAgentLoop(
+      "mix",
+      baseConfig,
+      tools,
+      client,
+      permissionCheck,
+      allowSafety()
+    );
 
     expect(permissionCheck).toHaveBeenCalledTimes(2);
     expect(readFile.execute).toHaveBeenCalledWith({ path: "notes.txt" });
@@ -283,6 +306,166 @@ describe("runAgentLoop permission integration", () => {
           role: "tool",
           tool_call_id: "call-write",
           content: "[permission denied] Cancelled by user",
+        },
+      ]
+    );
+  });
+
+  it("blocks read_file sandbox escapes before permission or execution", async () => {
+    const { client, sentMessages } = createClient([
+      toolCallResponse([
+        {
+          id: "call-read",
+          name: "read_file",
+          args: { path: "../../etc/passwd" },
+        },
+      ]),
+      textResponse("blocked"),
+    ]);
+    const tools = new ToolRegistry();
+    const readFile = createTool("read_file", "read", "secret");
+    tools.register(readFile);
+    const permissionCheck = approve();
+
+    await runAgentLoop("read outside", baseConfig, tools, client, permissionCheck);
+
+    expect(permissionCheck).not.toHaveBeenCalled();
+    expect(readFile.execute).not.toHaveBeenCalled();
+    expect(sentMessages[1].find((message) => message.role === "tool")).toEqual({
+      role: "tool",
+      tool_call_id: "call-read",
+      content: "[blocked] path escapes the working directory",
+    });
+  });
+
+  it("blocks dangerous run_command before permission or execution", async () => {
+    const { client, sentMessages } = createClient([
+      toolCallResponse([
+        {
+          id: "call-run",
+          name: "run_command",
+          args: { command: "rm -rf /tmp/test" },
+        },
+      ]),
+      textResponse("blocked"),
+    ]);
+    const tools = new ToolRegistry();
+    const runCommand = createTool("run_command", "command", "deleted");
+    tools.register(runCommand);
+    const permissionCheck = approve();
+
+    await runAgentLoop("delete", baseConfig, tools, client, permissionCheck);
+
+    expect(permissionCheck).not.toHaveBeenCalled();
+    expect(runCommand.execute).not.toHaveBeenCalled();
+    expect(sentMessages[1].find((message) => message.role === "tool")).toEqual({
+      role: "tool",
+      tool_call_id: "call-run",
+      content: "[blocked] Blocked: destructive file deletion (rm -rf)",
+    });
+  });
+
+  it("still asks permission for safe write_file calls", async () => {
+    const input = { path: "test.txt", content: "hello" };
+    const { client, sentMessages } = createClient([
+      toolCallResponse([{ id: "call-write", name: "write_file", args: input }]),
+      textResponse("denied"),
+    ]);
+    const tools = new ToolRegistry();
+    const writeFile = createTool("write_file", "write", "wrote file");
+    tools.register(writeFile);
+    const permissionCheck = reject();
+
+    await runAgentLoop("write", baseConfig, tools, client, permissionCheck);
+
+    expect(permissionCheck).toHaveBeenCalledWith(writeFile, input, {
+      autoApprove: false,
+    });
+    expect(writeFile.execute).not.toHaveBeenCalled();
+    expect(sentMessages[1].find((message) => message.role === "tool")).toEqual({
+      role: "tool",
+      tool_call_id: "call-write",
+      content: "[permission denied] Cancelled by user",
+    });
+  });
+
+  it("does not let autoApprove bypass dangerous command rules", async () => {
+    const { client, sentMessages } = createClient([
+      toolCallResponse([
+        {
+          id: "call-run",
+          name: "run_command",
+          args: { command: "sudo npm install" },
+        },
+      ]),
+      textResponse("blocked"),
+    ]);
+    const tools = new ToolRegistry();
+    const runCommand = createTool("run_command", "command", "installed");
+    tools.register(runCommand);
+    const permissionCheck = approve();
+
+    await runAgentLoop(
+      "install",
+      { ...baseConfig, autoApprove: true },
+      tools,
+      client,
+      permissionCheck
+    );
+
+    expect(permissionCheck).not.toHaveBeenCalled();
+    expect(runCommand.execute).not.toHaveBeenCalled();
+    expect(sentMessages[1].find((message) => message.role === "tool")).toEqual({
+      role: "tool",
+      tool_call_id: "call-run",
+      content: "[blocked] Blocked: privilege escalation (sudo)",
+    });
+  });
+
+  it("checks safety independently for mixed tool calls", async () => {
+    const { client, sentMessages } = createClient([
+      toolCallResponse([
+        {
+          id: "call-run",
+          name: "run_command",
+          args: { command: "rm -rf dist" },
+        },
+        {
+          id: "call-read",
+          name: "read_file",
+          args: { path: "notes.txt" },
+        },
+      ]),
+      textResponse("mixed"),
+    ]);
+    const tools = new ToolRegistry();
+    const runCommand = createTool("run_command", "command", "deleted");
+    const readFile = createTool("read_file", "read", "notes");
+    tools.register(runCommand);
+    tools.register(readFile);
+    const permissionCheck = approve();
+
+    await runAgentLoop("mix safety", baseConfig, tools, client, permissionCheck);
+
+    expect(runCommand.execute).not.toHaveBeenCalled();
+    expect(readFile.execute).toHaveBeenCalledWith({ path: "notes.txt" });
+    expect(permissionCheck).toHaveBeenCalledTimes(1);
+    expect(permissionCheck).toHaveBeenCalledWith(
+      readFile,
+      { path: "notes.txt" },
+      { autoApprove: false }
+    );
+    expect(sentMessages[1].filter((message) => message.role === "tool")).toEqual(
+      [
+        {
+          role: "tool",
+          tool_call_id: "call-run",
+          content: "[blocked] Blocked: destructive file deletion (rm -rf)",
+        },
+        {
+          role: "tool",
+          tool_call_id: "call-read",
+          content: "notes",
         },
       ]
     );

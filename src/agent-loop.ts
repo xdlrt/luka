@@ -5,6 +5,8 @@ import {
   checkToolPermission,
   type PermissionDecision,
 } from "./permissions/index.js";
+import { checkCommandSafety } from "./permissions/rules.js";
+import { checkPathInSandbox } from "./permissions/sandbox.js";
 import type { ToolRegistry } from "./tools/index.js";
 import type { ToolDefinition } from "./tools/types.js";
 import type { Message } from "./types.js";
@@ -22,12 +24,45 @@ export type PermissionChecker = (
   options: { autoApprove?: boolean }
 ) => Promise<PermissionDecision>;
 
+export type SafetyDecision =
+  | { allowed: true }
+  | { allowed: false; reason: string };
+
+export type SafetyChecker = (
+  tool: ToolDefinition,
+  input: Record<string, unknown>,
+  options: { workingDirectory: string }
+) => Promise<SafetyDecision>;
+
+export async function checkToolSafety(
+  tool: ToolDefinition,
+  input: Record<string, unknown>,
+  options: { workingDirectory: string }
+): Promise<SafetyDecision> {
+  if (tool.name === "read_file" || tool.name === "write_file" || tool.name === "edit_file") {
+    const sandbox = checkPathInSandbox(options.workingDirectory, input.path);
+    if (!sandbox.allowed) {
+      return { allowed: false, reason: sandbox.reason };
+    }
+  }
+
+  if (tool.name === "run_command") {
+    const commandSafety = checkCommandSafety(input.command);
+    if (!commandSafety.allowed) {
+      return { allowed: false, reason: commandSafety.reason };
+    }
+  }
+
+  return { allowed: true };
+}
+
 export async function runAgentLoop(
   userInput: string,
   config: AppConfig,
   tools: ToolRegistry,
   client: LLMClient = new LLMClient(config),
-  permissionCheck: PermissionChecker = checkToolPermission
+  permissionCheck: PermissionChecker = checkToolPermission,
+  safetyCheck: SafetyChecker = checkToolSafety
 ): Promise<AgentResult> {
   const messages: Message[] = [
     { role: "system", content: SYSTEM_PROMPT },
@@ -68,6 +103,19 @@ export async function runAgentLoop(
         const tool = tools.get(call.name);
         if (tool === undefined) {
           throw new Error(`Tool not found: ${call.name}`);
+        }
+
+        const safety = await safetyCheck(tool, call.input, {
+          workingDirectory: config.workingDirectory,
+        });
+        if (!safety.allowed) {
+          content = `[blocked] ${safety.reason}`;
+          messages.push({
+            role: "tool",
+            tool_call_id: call.id,
+            content,
+          });
+          continue;
         }
 
         const permission = await permissionCheck(tool, call.input, {

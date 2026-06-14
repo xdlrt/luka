@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from "vitest";
-import { runAgentLoop } from "../src/agent-loop.js";
+import { runAgentLoop, type SafetyChecker } from "../src/agent-loop.js";
 import { ToolRegistry, type ToolDefinition } from "../src/tools/index.js";
 import type { LLMClient } from "../src/llm-client.js";
 import type {
@@ -16,6 +16,8 @@ const baseConfig = {
   workingDirectory: "/tmp",
   autoApprove: false,
 };
+
+const allowSafety: SafetyChecker = vi.fn(async () => ({ allowed: true }));
 
 function textResponse(content: string): ChatCompletionResponse {
   return {
@@ -102,7 +104,14 @@ describe("runAgentLoop", () => {
     const echo = createTool("echo", "echo-output");
     tools.register(echo);
 
-    const result = await runAgentLoop("run echo", baseConfig, tools, client);
+    const result = await runAgentLoop(
+      "run echo",
+      baseConfig,
+      tools,
+      client,
+      undefined,
+      allowSafety
+    );
 
     expect(result.success).toBe(true);
     expect(result.turnsUsed).toBe(2);
@@ -125,7 +134,7 @@ describe("runAgentLoop", () => {
     const tools = new ToolRegistry();
     tools.register(createTool("echo", "echo-output"));
 
-    await runAgentLoop("go", baseConfig, tools, client);
+    await runAgentLoop("go", baseConfig, tools, client, undefined, allowSafety);
 
     const secondCallMessages = sentMessages[1];
     const toolMessage = secondCallMessages.find((m) => m.role === "tool");
@@ -143,7 +152,14 @@ describe("runAgentLoop", () => {
     tools.register(createTool("read", "content"));
     tools.register(createTool("write", "written"));
 
-    const result = await runAgentLoop("task", baseConfig, tools, client);
+    const result = await runAgentLoop(
+      "task",
+      baseConfig,
+      tools,
+      client,
+      undefined,
+      allowSafety
+    );
 
     expect(result.toolsCalled).toEqual(["read", "write"]);
     expect(result.turnsUsed).toBe(3);
@@ -163,7 +179,9 @@ describe("runAgentLoop", () => {
       "loop",
       { ...baseConfig, maxTurns: 2 },
       tools,
-      client
+      client,
+      undefined,
+      allowSafety
     );
 
     expect(result.success).toBe(false);
@@ -185,7 +203,8 @@ describe("runAgentLoop", () => {
       { ...baseConfig, autoApprove: true },
       tools,
       client,
-      permissionCheck
+      permissionCheck,
+      allowSafety
     );
 
     expect(permissionCheck).toHaveBeenCalledWith(

@@ -223,3 +223,11 @@
 - Why: P2-W5-T2 需要把“路径是否仍在 `workingDirectory` 内”做成集中、可测试的判定能力；当前路径校验散落在各工具的 `validatePath` 里，若继续扩散，后续 Harness 接管执行链路时会重复迁移，也难以统一越狱判定口径。
 - What: 新增 `src/permissions/sandbox.ts`，导出 `checkPathInSandbox()` 与 `resolvePathInSandbox()`；判定规则为绝对路径直接拒绝、非空字符串校验、解析后用 `path.relative` 判断是否逃出 root，允许 `..` 只要解析后仍在 root 内，符号链接只做路径规范化不追踪真实目标。本次只交付沙箱模块与单测，不改动 `read_file`/`write_file`/`run_command` 或 Agent Loop，真实接入留给 P2-W5-T3。
 - How: 用 `path.resolve` 规范化 root 再以 `path.relative` 判断前缀，规避 `/tmp/app` 与 `/tmp/app2` 的 sibling 前缀误判；单测覆盖合法相对路径、`..` 内部归一、`..` 越狱、绝对路径、非法输入、sibling 前缀和 symlink 不追踪，并验证 `resolvePathInSandbox` 抛错原因与 check 决策一致。验证方式为 `npm test -- tests/permissions/sandbox.test.ts`、`npm run build` 和全量 `npm test`，确认 16 个测试文件和 119 条测试全部通过。
+
+## wire safety checks into agent loop
+
+- commit: wire safety checks into agent loop
+- time: 2026-06-14 11:04
+- Why: P2-W5-T3 需要让沙箱和危险命令规则真正进入工具执行前的关键路径；如果继续只依赖工具内部校验或人工确认，危险命令仍会先进入确认环节，`autoApprove` 场景也无法证明安全规则不可绕过。
+- What: 在 Agent Loop 中新增可注入的安全检查层，执行顺序固定为工具存在检查、沙箱/规则检查、权限确认、工具执行；安全拒绝以 `[blocked]` tool 消息回传给模型并使用真实 `tool_call_id`，同时保留当前无 Harness 时由 Agent Loop 编排的边界。
+- How: 默认安全检查复用 `checkPathInSandbox()` 和 `checkCommandSafety()`，只对 `read_file`、`write_file`、`edit_file` 做路径沙箱，对 `run_command` 做命令规则，避免按 category 误伤自定义 read/write 工具；测试覆盖沙箱逃逸、危险命令、`autoApprove` 不绕过规则、安全写入仍进入确认、多 tool call 独立处理，以及旧 Agent Loop 单测通过注入 allowSafety 保持协议焦点。验证方式为目标 Agent Loop/permissions 测试、`npm run build` 和全量 `npm test`，确认 17 个测试文件和 136 条测试全部通过。
