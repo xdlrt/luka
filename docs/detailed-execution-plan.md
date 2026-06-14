@@ -57,7 +57,7 @@ flowchart TD
 
 - [x] **P1 里程碑**：CLI Agent 能通过 tool_calls 循环读写文件，能自主完成“创建文件并回读验证”。
 - [x] **P2 里程碑**：Agent 具备完整 Harness（权限门控 + 安全规则 + 沙箱 + 自验证 + 重试）和 eval 基线数据。
-- [ ] **P3 里程碑**：Agent 能处理多文件项目（grep/glob 检索 + 上下文压缩 + TodoWrite 规划）和扩展 eval 数据。
+- [x] **P3 里程碑**：Agent 能处理多文件项目（grep/glob 检索 + 上下文压缩 + TodoWrite 规划）和扩展 eval 数据。
 - [ ] **P4 里程碑**：Agent 具备可观测事件流、可扩展 hook 机制、数据回流能力和基于观测数据的持续 eval 平台。
 - [ ] **P5 里程碑**：形成可对外发布的开源仓库，并完成技术文章。
 

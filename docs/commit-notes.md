@@ -319,3 +319,11 @@
 - Why: P3-W11 的目标是让 Agent 在多步任务中显式维护规划状态，而不是只把计划写进自然语言回答里。首版选择单次用户请求内的内存 TODO，避免把跨会话持久化、长期任务恢复和清空策略提前引入当前最小闭环。
 - What: 新增 `TodoManager`、默认 `todo_write` 工具和任务拆解提示词模块；系统提示词指导复杂或 3 步以上任务先创建计划、执行中更新状态、验证后标记完成。Agent Loop 在每轮模型调用前注入当前 TODO 状态，CLI 在请求结束后展示进度列表；P3-W11-T1 到 T4 checklist 同步标记完成。
 - How: `todo_write` 采用完整列表替换语义，并校验非空 id/content、合法 status、最多一个 `in_progress`；工具 category 标为 `read`，因为它只修改进程内规划状态，不写工作区文件。拆解模块只提供可测的 prompt builder 和文本解析器，不额外改变 Agent Loop 的 LLM 请求次数；验证覆盖 planning、工具 schema/registry、权限分类、系统提示词、Agent Loop 上下文注入和 CLI 展示。
+
+## record p3 eval result
+
+- commit: record p3 eval result
+- time: 2026-06-14 15:21
+- Why: P3 的功能已经覆盖多文件检索、上下文压缩、context-budget 读取和 TodoWrite 规划，但没有真实全量 eval 结果就无法判断这些能力在 10 个任务上的实际表现，也无法和 P2 的 5 任务基线做可复盘对比。
+- What: 运行 `npm run eval -- --all` 得到 P3 结果 `9/10`，并保存为 `evals/results/2026-06-14-p3.json`；README 新增 P2/P3 对比表和 P3 任务明细，记录平均轮数从 3.8 到 4.6、平均重试从 0.0 到 0.4，并说明 `09-add-tests-for-module` 失败于期望文本缺失。P3-W11-T5 和总执行计划中的 P3 里程碑标记完成。
+- How: 保留 runner 原始输出文件 `2026-06-14T07-17-18-855Z.json`，同时复制一份稳定命名的 P3 结果文件便于 README 引用；对比指标只使用现有 eval JSON 字段手工计算，不新增 runner schema 或持续评测逻辑。验证方式为 `npm run build`、全量 `npm test`、真实 `npm run eval -- --all` 和最终 `git diff --check`。
