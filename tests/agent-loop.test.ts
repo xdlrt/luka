@@ -1,5 +1,7 @@
 import { describe, expect, it, vi } from "vitest";
 import { runAgentLoop } from "../src/agent-loop.js";
+import { MessageHistory } from "../src/context/message-history.js";
+import type { HistoryCompressor } from "../src/context/compressor.js";
 import type { HarnessLike } from "../src/harness.js";
 import { ToolRegistry, type ToolDefinition } from "../src/tools/index.js";
 import {
@@ -31,6 +33,27 @@ function createHarness(
     beginTurn: vi.fn(),
     executeTool,
     endTurn: vi.fn(),
+  };
+}
+
+function createCompressor(
+  options: {
+    shouldCompress?: boolean;
+    compressedMessages?: MessageHistory;
+    throwOnCompress?: boolean;
+  } = {}
+): HistoryCompressor {
+  return {
+    shouldCompress: vi.fn(async () => options.shouldCompress ?? false),
+    compress: vi.fn(async () => {
+      if (options.throwOnCompress) {
+        throw new Error("compression failed");
+      }
+      return (
+        options.compressedMessages ??
+        new MessageHistory([{ role: "assistant", content: "Context summary:\nok" }])
+      );
+    }),
   };
 }
 
@@ -184,6 +207,128 @@ describe("runAgentLoop", () => {
     expect(logger.debug).toHaveBeenCalledWith(
       expect.stringMatching(/^\[CONTEXT\] messages=2, approxTokens=\d+$/)
     );
+  });
+
+  it("compresses history before sending messages to the model", async () => {
+    const { client, sentMessages } = createClient([textResponse("done")]);
+    const tools = new ToolRegistry();
+    const harness = createHarness();
+    const logger = {
+      debug: vi.fn(),
+      info: vi.fn(),
+      warn: vi.fn(),
+      error: vi.fn(),
+    };
+    const compressor = createCompressor({
+      shouldCompress: true,
+      compressedMessages: new MessageHistory([
+        { role: "system", content: "system" },
+        { role: "assistant", content: "Context summary:\nold work" },
+        { role: "user", content: "latest task" },
+      ]),
+    });
+
+    await runAgentLoop(
+      "hi",
+      baseConfig,
+      tools,
+      client,
+      harness,
+      logger,
+      compressor
+    );
+
+    expect(compressor.shouldCompress).toHaveBeenCalledTimes(1);
+    expect(compressor.compress).toHaveBeenCalledTimes(1);
+    expect(sentMessages[0]).toEqual([
+      { role: "system", content: "system" },
+      { role: "assistant", content: "Context summary:\nold work" },
+      { role: "user", content: "latest task" },
+    ]);
+    expect(logger.info).toHaveBeenCalledWith(
+      expect.stringMatching(/^\[CONTEXT\] Compressing: \d+ → \d+ tokens$/)
+    );
+  });
+
+  it("does not compress short conversations", async () => {
+    const { client } = createClient([textResponse("done")]);
+    const tools = new ToolRegistry();
+    const harness = createHarness();
+    const compressor = createCompressor({ shouldCompress: false });
+
+    await runAgentLoop(
+      "hi",
+      baseConfig,
+      tools,
+      client,
+      harness,
+      undefined,
+      compressor
+    );
+
+    expect(compressor.shouldCompress).toHaveBeenCalledTimes(1);
+    expect(compressor.compress).not.toHaveBeenCalled();
+  });
+
+  it("continues tool execution after compression", async () => {
+    const { client } = createClient([
+      toolCallResponse([{ id: "call-1", name: "echo", args: {} }]),
+      textResponse("done"),
+    ]);
+    const tools = new ToolRegistry();
+    tools.register(createTool("echo", "echo-output"));
+    const harness = createHarness(
+      vi.fn(async () => ({ content: "echo-output" }))
+    );
+    const compressor = createCompressor({
+      shouldCompress: true,
+      compressedMessages: new MessageHistory([
+        { role: "system", content: "system" },
+        { role: "assistant", content: "Context summary:\nold work" },
+        { role: "user", content: "latest task" },
+      ]),
+    });
+
+    const result = await runAgentLoop(
+      "run echo",
+      baseConfig,
+      tools,
+      client,
+      harness,
+      undefined,
+      compressor
+    );
+
+    expect(result.success).toBe(true);
+    expect(result.toolsCalled).toEqual(["echo"]);
+    expect(harness.executeTool).toHaveBeenCalledWith(
+      "echo",
+      {},
+      tools,
+      "tools: echo"
+    );
+  });
+
+  it("surfaces compression failures", async () => {
+    const { client } = createClient([textResponse("done")]);
+    const tools = new ToolRegistry();
+    const harness = createHarness();
+    const compressor = createCompressor({
+      shouldCompress: true,
+      throwOnCompress: true,
+    });
+
+    await expect(
+      runAgentLoop(
+        "hi",
+        baseConfig,
+        tools,
+        client,
+        harness,
+        undefined,
+        compressor
+      )
+    ).rejects.toThrow("compression failed");
   });
 
   it("injects verification messages returned by the harness", async () => {

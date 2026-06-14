@@ -13,6 +13,11 @@ export class MessageHistory {
     this.messages.push(message);
   }
 
+  replace(messages: Message[]): void {
+    this.messages.length = 0;
+    this.messages.push(...messages);
+  }
+
   getMessages(): Message[] {
     return [...this.messages];
   }
