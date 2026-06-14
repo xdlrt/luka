@@ -3,6 +3,7 @@ import { runAgentLoop } from "../src/agent-loop.js";
 import { MessageHistory } from "../src/context/message-history.js";
 import type { HistoryCompressor } from "../src/context/compressor.js";
 import type { HarnessLike } from "../src/harness.js";
+import { TodoManager, type TodoItem } from "../src/planning/todo.js";
 import { ToolRegistry, type ToolDefinition } from "../src/tools/index.js";
 import {
   baseConfig,
@@ -71,6 +72,7 @@ describe("runAgentLoop", () => {
       toolsCalled: [],
       success: true,
       totalTokens: 2,
+      todoDisplay: undefined,
     });
     expect(harness.executeTool).not.toHaveBeenCalled();
   });
@@ -128,6 +130,69 @@ describe("runAgentLoop", () => {
     expect(assistantMessage?.tool_calls?.[0]?.id).toBe("call-xyz");
     expect(toolMessage?.tool_call_id).toBe("call-xyz");
     expect(toolMessage?.content).toBe("echo-output");
+  });
+
+  it("injects current todo state into the next model request", async () => {
+    const todoManager = new TodoManager();
+    const { client, sentMessages } = createClient([
+      toolCallResponse([
+        {
+          id: "call-todo",
+          name: "todo_write",
+          args: {
+            todos: [
+              { id: "inspect", content: "Inspect code", status: "completed" },
+              {
+                id: "implement",
+                content: "Implement tool",
+                status: "in_progress",
+              },
+            ],
+          },
+        },
+      ]),
+      textResponse("done"),
+    ]);
+    const tools = new ToolRegistry(todoManager);
+    tools.register(createTool("todo_write", "unused"));
+    const harness = createHarness(
+      vi.fn(async (_toolName, input) => {
+        todoManager.update(input.todos as TodoItem[]);
+        return { content: todoManager.formatForDisplay() };
+      })
+    );
+
+    const result = await runAgentLoop(
+      "plan task",
+      baseConfig,
+      tools,
+      client,
+      harness
+    );
+
+    expect(result.todoDisplay).toBe(
+      [
+        "Progress: 1/2 completed",
+        "[x] Inspect code",
+        "[~] Implement tool",
+      ].join("\n")
+    );
+    expect(sentMessages[0]?.map((message) => message.content).join("\n")).not.toContain(
+      "Current TODO state"
+    );
+    expect(sentMessages[1]).toEqual(
+      expect.arrayContaining([
+        {
+          role: "system",
+          content: [
+            "Current TODO state:",
+            "Progress: 1/2 completed",
+            "[x] Inspect code",
+            "[~] Implement tool",
+          ].join("\n"),
+        },
+      ])
+    );
   });
 
   it("handles multiple sequential tool calls across turns", async () => {

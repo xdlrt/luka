@@ -5,12 +5,16 @@ import { createGrepTool } from "./grep.js";
 import { createReadFileTool } from "./read-file.js";
 import { createRunCommandTool } from "./run-command.js";
 import type { ToolDefinition } from "./types.js";
+import { TodoManager } from "../planning/todo.js";
+import { createTodoWriteTool } from "./todo-write.js";
 import { createWriteFileTool } from "./write-file.js";
 
 export type { ToolCategory, ToolDefinition } from "./types.js";
 
 export class ToolRegistry {
   private readonly tools = new Map<string, ToolDefinition>();
+
+  constructor(private readonly todoManager?: TodoManager) {}
 
   register(tool: ToolDefinition): void {
     if (this.tools.has(tool.name)) {
@@ -48,17 +52,23 @@ export class ToolRegistry {
       },
     }));
   }
+
+  getTodoManager(): TodoManager | undefined {
+    return this.todoManager;
+  }
 }
 
 export function createDefaultToolRegistry(
-  workingDirectory: string
+  workingDirectory: string,
+  todoManager: TodoManager = new TodoManager()
 ): ToolRegistry {
-  const registry = new ToolRegistry();
+  const registry = new ToolRegistry(todoManager);
   registry.register(createReadFileTool(workingDirectory));
   registry.register(createWriteFileTool(workingDirectory));
   registry.register(createEditFileTool(workingDirectory));
   registry.register(createRunCommandTool(workingDirectory));
   registry.register(createGrepTool(workingDirectory));
   registry.register(createGlobTool(workingDirectory));
+  registry.register(createTodoWriteTool(todoManager));
   return registry;
 }

@@ -10,6 +10,7 @@ describe("classifyTool", () => {
     expect(classifyTool("run_command")).toBe("command");
     expect(classifyTool("grep")).toBe("read");
     expect(classifyTool("glob")).toBe("read");
+    expect(classifyTool("todo_write")).toBe("read");
   });
 
   it("returns unknown for unregistered tool names", () => {

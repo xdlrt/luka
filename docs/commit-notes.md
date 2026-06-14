@@ -311,3 +311,11 @@
 - Why: P2 的 5 个基准任务主要验证单文件读写、简单编辑和自验证闭环，无法覆盖 P3 已新增的 grep/glob 检索、长上下文压缩和多文件导航能力。P3-W10-T4 需要先把任务数据扩展到多文件项目，为后续 W11 的全量 eval 对比提供固定样本。
 - What: 新增 `06-grep-fix` 到 `10-implement-from-spec` 五个 eval 任务，分别覆盖错误文本定位 bug、按既有模式添加函数、跨文件重命名、为未测试模块补测试、按 spec 实现功能；每个任务都提供 3 个以上 setup 文件和 Node 内置测试命令。新增真实任务目录测试，固定 01-10 排序、P3 任务多文件约束和 `testsPassing` 期望；P3-W10-T4 checklist 同步标记完成。
 - How: 继续复用现有 EvalTask JSON schema，不新增 runner 字段或工具调用断言，避免在没有 trace 事件前把“必须调用 grep/glob/压缩”伪装成可验证事实。任务测试全部使用 `.mjs` 和 `node:assert`，不引入新依赖；验证方式为 `npm test -- tests/evals-types.test.ts tests/evals-runner.test.ts tests/evals-tasks.test.ts`、`npm run build`、全量 `npm test` 和 `git diff --check`，确认 33 个测试文件和 238 条测试全部通过。
+
+## add todo planning tool
+
+- commit: add todo planning tool
+- time: 2026-06-14 15:14
+- Why: P3-W11 的目标是让 Agent 在多步任务中显式维护规划状态，而不是只把计划写进自然语言回答里。首版选择单次用户请求内的内存 TODO，避免把跨会话持久化、长期任务恢复和清空策略提前引入当前最小闭环。
+- What: 新增 `TodoManager`、默认 `todo_write` 工具和任务拆解提示词模块；系统提示词指导复杂或 3 步以上任务先创建计划、执行中更新状态、验证后标记完成。Agent Loop 在每轮模型调用前注入当前 TODO 状态，CLI 在请求结束后展示进度列表；P3-W11-T1 到 T4 checklist 同步标记完成。
+- How: `todo_write` 采用完整列表替换语义，并校验非空 id/content、合法 status、最多一个 `in_progress`；工具 category 标为 `read`，因为它只修改进程内规划状态，不写工作区文件。拆解模块只提供可测的 prompt builder 和文本解析器，不额外改变 Agent Loop 的 LLM 请求次数；验证覆盖 planning、工具 schema/registry、权限分类、系统提示词、Agent Loop 上下文注入和 CLI 展示。

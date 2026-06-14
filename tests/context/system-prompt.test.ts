@@ -7,7 +7,7 @@ describe("SYSTEM_PROMPT", () => {
   });
 
   it("stays concise", () => {
-    expect(SYSTEM_PROMPT.length).toBeLessThanOrEqual(2000);
+    expect(SYSTEM_PROMPT.length).toBeLessThanOrEqual(3000);
   });
 
   it("contains the required role, tool, and safety guidance", () => {
@@ -29,7 +29,14 @@ describe("SYSTEM_PROMPT", () => {
     );
   });
 
+  it("contains planning guidance", () => {
+    expect(SYSTEM_PROMPT).toContain("3 步以上任务");
+    expect(SYSTEM_PROMPT).toContain("todo_write");
+    expect(SYSTEM_PROMPT).toContain("最多保持一个 in_progress");
+    expect(SYSTEM_PROMPT).toContain("标记为 completed");
+  });
+
   it("does not contain placeholder text", () => {
-    expect(SYSTEM_PROMPT).not.toMatch(/TODO|TBD|PLACEHOLDER/i);
+    expect(SYSTEM_PROMPT).not.toMatch(/TBD|PLACEHOLDER/i);
   });
 });
