@@ -295,3 +295,11 @@
 - Why: P3-W10 需要让长对话在进入模型前可压缩，否则多文件任务积累的 read/grep/glob/tool 结果会不断推高上下文体积，最终要么请求失败，要么迫使后续实现做粗暴截断。首版选择独立压缩器而不是扩展全局配置，是为了先固定最小可测行为，并避免把阈值、CLI flag 和环境变量校验一起拉进本任务。
 - What: 新增 `ContextCompressor`，在 token 估算超过阈值时用一次 LLM 摘要早期消息，保留 system 消息和最近 N 条对话消息，并把摘要写成 `Context summary:` assistant 消息。Agent Loop 在每轮 LLM 调用前检查压缩，触发后替换 `MessageHistory` 并记录压缩前后 token；P3-W10-T1/T2 checklist 同步标记完成。
 - How: 压缩器只依赖最小 `chat(systemPrompt, userMessage)` 接口，摘要提示词固定要求保留读取/修改文件、关键决定、当前状态、验证失败和下一步，避免把 tool schema 或运行时字段暴露给摘要调用。`MessageHistory.replace()` 提供受控替换能力，Agent Loop 通过可注入 `HistoryCompressor` 做测试隔离。验证方式为目标测试 `npm test -- tests/context/message-history.test.ts tests/context/compressor.test.ts tests/agent-loop.test.ts tests/integration/p1-end-to-end.test.ts`、`npm run build`、全量 `npm test` 和 `git diff --check`，确认 32 个测试文件和 229 条测试全部通过。
+
+## add context-aware read file ranges
+
+- commit: add context-aware read file ranges
+- time: 2026-06-14 15:02
+- Why: P3-W10-T3 要避免 `read_file` 把超大文件完整塞进上下文，同时工具输出里又不能提示模型使用不存在的能力。只做默认截断会降低上下文压力，但模型无法继续精确读取被省略区段；因此本次把大文件截断和真实可用的 `offset`/`limit` 行范围读取一起交付。
+- What: `read_file` 保持 500 行以内原样返回，超过 500 行时默认返回前 100 行、截断提示和后 50 行；工具 schema 新增可选 `offset` 与 `limit`，按 1-based 行号读取指定区段，`limit` 默认 200 且最大 500。P3-W10-T3 checklist 同步标记完成，路径校验和二进制拒绝边界不变。
+- How: 实现把文件内容先按行处理，默认路径只在超过阈值时截断，显式范围读取则跳过默认截断并加一行范围元信息，方便模型知道当前片段对应原文件行号。单测覆盖 500 行边界、501 行截断、提示文本、范围读取、默认 offset/limit、越界空片段、非法参数和 limit 上限。验证方式为 `npm test -- tests/tools/read-file.test.ts tests/tools/registry-integration.test.ts`、`npm run build` 和全量 `npm test`，确认 32 个测试文件和 235 条测试全部通过。

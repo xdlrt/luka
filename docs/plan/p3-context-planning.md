@@ -125,7 +125,7 @@
 
 ---
 
-- [ ] **P3-W10-T3**: 实现 context-budget 感知的文件读取
+- [x] **P3-W10-T3**: 实现 context-budget 感知的文件读取
 
   **说明**：修改 `read_file` 工具——对超大文件做截断处理。超过 500 行的文件只返回前 100 + 后 50 行，附带提示："File truncated. Use offset/limit to read specific sections, or grep to find relevant parts."
 
