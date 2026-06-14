@@ -11,6 +11,8 @@ const baseConfig: AppConfig = {
   maxTurns: 20,
   workingDirectory: "/tmp",
   autoApprove: false,
+  maxRetries: 3,
+  verbose: false,
 };
 
 function jsonResponse(

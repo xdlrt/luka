@@ -15,6 +15,8 @@ const baseConfig = {
   maxTurns: 20,
   workingDirectory: "/tmp",
   autoApprove: false,
+  maxRetries: 3,
+  verbose: false,
 };
 
 const allowSafety: SafetyChecker = vi.fn(async () => ({ allowed: true }));

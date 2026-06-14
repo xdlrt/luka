@@ -34,6 +34,8 @@ const baseConfig: AppConfig = {
   workingDirectory: "",
   autoApprove: true,
   testCommand: "node check.mjs",
+  maxRetries: 3,
+  verbose: false,
 };
 
 function toolCallResponse(

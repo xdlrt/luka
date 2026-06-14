@@ -16,6 +16,8 @@ type AgentRunner = (
 export interface ParsedCliArgs {
   autoApprove: boolean;
   testCommand?: string;
+  maxRetries?: number;
+  verbose: boolean;
   initialInput: string;
 }
 
@@ -23,11 +25,17 @@ export function parseCliArgs(argv: string[]): ParsedCliArgs {
   const promptParts: string[] = [];
   let autoApprove = false;
   let testCommand: string | undefined;
+  let maxRetries: number | undefined;
+  let verbose = false;
 
   for (let i = 0; i < argv.length; i++) {
     const arg = argv[i];
     if (arg === "--auto-approve" || arg === "-y") {
       autoApprove = true;
+      continue;
+    }
+    if (arg === "--verbose" || arg === "-v") {
+      verbose = true;
       continue;
     }
     if (arg === "--test-command") {
@@ -39,12 +47,23 @@ export function parseCliArgs(argv: string[]): ParsedCliArgs {
       i += 1;
       continue;
     }
+    if (arg === "--max-retries") {
+      const value = argv[i + 1];
+      if (value === undefined) {
+        throw new Error("--max-retries requires a value");
+      }
+      maxRetries = parsePositiveInteger(value, "--max-retries");
+      i += 1;
+      continue;
+    }
     promptParts.push(arg);
   }
 
   return {
     autoApprove,
     testCommand,
+    maxRetries,
+    verbose,
     initialInput: promptParts.join(" ").trim(),
   };
 }
@@ -107,6 +126,8 @@ async function main(): Promise<void> {
   const config = loadConfig({
     autoApprove: args.autoApprove,
     testCommand: args.testCommand,
+    maxRetries: args.maxRetries,
+    verbose: args.verbose,
   });
   const registry = createDefaultToolRegistry(config.workingDirectory);
   const initialInput = args.initialInput;
@@ -117,6 +138,14 @@ async function main(): Promise<void> {
   }
 
   await runRepl(config, registry);
+}
+
+function parsePositiveInteger(raw: string, flag: string): number {
+  const parsed = Number(raw);
+  if (!Number.isInteger(parsed) || parsed <= 0) {
+    throw new Error(`${flag} requires a positive integer`);
+  }
+  return parsed;
 }
 
 const entrypoint = process.argv[1];

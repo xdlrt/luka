@@ -23,6 +23,8 @@ const baseConfig = {
   maxTurns: 3,
   workingDirectory: "",
   autoApprove: false,
+  maxRetries: 3,
+  verbose: false,
 };
 
 function toolCallResponse(

@@ -18,6 +18,8 @@ const baseConfig: AppConfig = {
   workingDirectory: "/tmp",
   autoApprove: true,
   testCommand: "npm test",
+  maxRetries: 3,
+  verbose: false,
 };
 
 const allowSafety: SafetyChecker = vi.fn(async () => ({ allowed: true }));
