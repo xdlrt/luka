@@ -1,0 +1,231 @@
+{
+  "runId": "2026-06-14T08-41-43-355Z",
+  "startedAt": "2026-06-14T08:41:43.355Z",
+  "model": "configured-model",
+  "selection": {
+    "mode": "all"
+  },
+  "repeat": 1,
+  "summary": {
+    "totalAttempts": 10,
+    "totalTasks": 10,
+    "passedAttempts": 9,
+    "passRate": 0.9,
+    "averageTurns": 5.3,
+    "averageToolCalls": 6.4,
+    "permissionDeniedCount": 0,
+    "verificationRuns": 11,
+    "flakyTasks": [],
+    "flakyRate": 0,
+    "feedbackSuccessRate": null
+  },
+  "results": [
+    {
+      "taskId": "01-create-file",
+      "attempt": 1,
+      "runId": "c000856b-36f3-4231-8612-814ead188448",
+      "tracePath": "/Users/bytedance/mess/coding-agent/evals/results/traces/2026-06-14T08-41-43-355Z/c000856b-36f3-4231-8612-814ead188448.jsonl",
+      "passed": true,
+      "turnsUsed": 2,
+      "toolCalls": [
+        "write_file"
+      ],
+      "permissionDeniedCount": 0,
+      "verificationRuns": 0,
+      "feedbackStatus": "not_configured",
+      "wallTimeMs": 22161
+    },
+    {
+      "taskId": "02-fix-typo",
+      "attempt": 1,
+      "runId": "0b817861-ef58-4a73-a9c3-b6453d1e80cf",
+      "tracePath": "/Users/bytedance/mess/coding-agent/evals/results/traces/2026-06-14T08-41-43-355Z/0b817861-ef58-4a73-a9c3-b6453d1e80cf.jsonl",
+      "passed": true,
+      "turnsUsed": 3,
+      "toolCalls": [
+        "read_file",
+        "edit_file"
+      ],
+      "permissionDeniedCount": 0,
+      "verificationRuns": 0,
+      "feedbackStatus": "not_configured",
+      "wallTimeMs": 7212
+    },
+    {
+      "taskId": "03-fix-logic-bug",
+      "attempt": 1,
+      "runId": "9c5e6715-5da7-46a4-a863-dc09a28ad145",
+      "tracePath": "/Users/bytedance/mess/coding-agent/evals/results/traces/2026-06-14T08-41-43-355Z/9c5e6715-5da7-46a4-a863-dc09a28ad145.jsonl",
+      "passed": true,
+      "turnsUsed": 4,
+      "toolCalls": [
+        "glob",
+        "read_file",
+        "read_file",
+        "edit_file"
+      ],
+      "permissionDeniedCount": 0,
+      "verificationRuns": 1,
+      "feedbackStatus": "not_configured",
+      "wallTimeMs": 8496
+    },
+    {
+      "taskId": "04-add-function",
+      "attempt": 1,
+      "runId": "4f659054-8075-4b6d-847f-2ba374bda151",
+      "tracePath": "/Users/bytedance/mess/coding-agent/evals/results/traces/2026-06-14T08-41-43-355Z/4f659054-8075-4b6d-847f-2ba374bda151.jsonl",
+      "passed": true,
+      "turnsUsed": 3,
+      "toolCalls": [
+        "read_file",
+        "read_file",
+        "edit_file"
+      ],
+      "permissionDeniedCount": 0,
+      "verificationRuns": 1,
+      "feedbackStatus": "not_configured",
+      "wallTimeMs": 6749
+    },
+    {
+      "taskId": "05-refactor",
+      "attempt": 1,
+      "runId": "fef0bd82-bc00-46f1-90ea-a8a5030979c6",
+      "tracePath": "/Users/bytedance/mess/coding-agent/evals/results/traces/2026-06-14T08-41-43-355Z/fef0bd82-bc00-46f1-90ea-a8a5030979c6.jsonl",
+      "passed": true,
+      "turnsUsed": 5,
+      "toolCalls": [
+        "read_file",
+        "glob",
+        "glob",
+        "read_file",
+        "edit_file"
+      ],
+      "permissionDeniedCount": 0,
+      "verificationRuns": 1,
+      "feedbackStatus": "not_configured",
+      "wallTimeMs": 17135
+    },
+    {
+      "taskId": "06-grep-fix",
+      "attempt": 1,
+      "runId": "26406c32-9a91-4337-8778-07774cbf909a",
+      "tracePath": "/Users/bytedance/mess/coding-agent/evals/results/traces/2026-06-14T08-41-43-355Z/26406c32-9a91-4337-8778-07774cbf909a.jsonl",
+      "passed": true,
+      "turnsUsed": 4,
+      "toolCalls": [
+        "grep",
+        "read_file",
+        "read_file",
+        "read_file",
+        "edit_file"
+      ],
+      "permissionDeniedCount": 0,
+      "verificationRuns": 1,
+      "feedbackStatus": "not_configured",
+      "wallTimeMs": 14663
+    },
+    {
+      "taskId": "07-add-patterned-function",
+      "attempt": 1,
+      "runId": "a5cd1338-1839-484a-9470-2344e43fbb5f",
+      "tracePath": "/Users/bytedance/mess/coding-agent/evals/results/traces/2026-06-14T08-41-43-355Z/a5cd1338-1839-484a-9470-2344e43fbb5f.jsonl",
+      "passed": true,
+      "turnsUsed": 5,
+      "toolCalls": [
+        "glob",
+        "read_file",
+        "read_file",
+        "read_file",
+        "edit_file",
+        "edit_file"
+      ],
+      "permissionDeniedCount": 0,
+      "verificationRuns": 2,
+      "feedbackStatus": "not_configured",
+      "wallTimeMs": 17239
+    },
+    {
+      "taskId": "08-cross-file-rename",
+      "attempt": 1,
+      "runId": "6b46fd90-7b94-41bd-b6fa-2f3317f6aafe",
+      "tracePath": "/Users/bytedance/mess/coding-agent/evals/results/traces/2026-06-14T08-41-43-355Z/6b46fd90-7b94-41bd-b6fa-2f3317f6aafe.jsonl",
+      "passed": true,
+      "turnsUsed": 12,
+      "toolCalls": [
+        "todo_write",
+        "grep",
+        "glob",
+        "glob",
+        "glob",
+        "grep",
+        "read_file",
+        "read_file",
+        "read_file",
+        "read_file",
+        "read_file",
+        "glob",
+        "glob",
+        "todo_write",
+        "edit_file",
+        "edit_file",
+        "edit_file"
+      ],
+      "permissionDeniedCount": 0,
+      "verificationRuns": 3,
+      "feedbackStatus": "not_configured",
+      "wallTimeMs": 54394
+    },
+    {
+      "taskId": "09-add-tests-for-module",
+      "attempt": 1,
+      "runId": "4117c9e6-5093-476d-b95c-2a4df34e9678",
+      "tracePath": "/Users/bytedance/mess/coding-agent/evals/results/traces/2026-06-14T08-41-43-355Z/4117c9e6-5093-476d-b95c-2a4df34e9678.jsonl",
+      "passed": false,
+      "turnsUsed": 7,
+      "toolCalls": [
+        "read_file",
+        "glob",
+        "glob",
+        "read_file",
+        "read_file",
+        "glob",
+        "run_command",
+        "run_command",
+        "run_command",
+        "write_file",
+        "run_command"
+      ],
+      "permissionDeniedCount": 0,
+      "verificationRuns": 1,
+      "feedbackStatus": "not_configured",
+      "wallTimeMs": 35751,
+      "failureReason": "expected tests/slugify.test.mjs to contain multiple-spaces"
+    },
+    {
+      "taskId": "10-implement-from-spec",
+      "attempt": 1,
+      "runId": "32a1e457-07bf-48c9-84af-0e736bcad217",
+      "tracePath": "/Users/bytedance/mess/coding-agent/evals/results/traces/2026-06-14T08-41-43-355Z/32a1e457-07bf-48c9-84af-0e736bcad217.jsonl",
+      "passed": true,
+      "turnsUsed": 8,
+      "toolCalls": [
+        "read_file",
+        "read_file",
+        "read_file",
+        "glob",
+        "glob",
+        "read_file",
+        "todo_write",
+        "write_file",
+        "run_command",
+        "todo_write"
+      ],
+      "permissionDeniedCount": 0,
+      "verificationRuns": 1,
+      "feedbackStatus": "not_configured",
+      "wallTimeMs": 27116
+    }
+  ],
+  "reportPath": "/Users/bytedance/mess/coding-agent/evals/results/latest-summary.md",
+  "dashboardPath": "/Users/bytedance/mess/coding-agent/evals/dashboard/data.json"
+}
