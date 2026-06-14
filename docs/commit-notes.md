@@ -231,3 +231,11 @@
 - Why: P2-W5-T3 需要让沙箱和危险命令规则真正进入工具执行前的关键路径；如果继续只依赖工具内部校验或人工确认，危险命令仍会先进入确认环节，`autoApprove` 场景也无法证明安全规则不可绕过。
 - What: 在 Agent Loop 中新增可注入的安全检查层，执行顺序固定为工具存在检查、沙箱/规则检查、权限确认、工具执行；安全拒绝以 `[blocked]` tool 消息回传给模型并使用真实 `tool_call_id`，同时保留当前无 Harness 时由 Agent Loop 编排的边界。
 - How: 默认安全检查复用 `checkPathInSandbox()` 和 `checkCommandSafety()`，只对 `read_file`、`write_file`、`edit_file` 做路径沙箱，对 `run_command` 做命令规则，避免按 category 误伤自定义 read/write 工具；测试覆盖沙箱逃逸、危险命令、`autoApprove` 不绕过规则、安全写入仍进入确认、多 tool call 独立处理，以及旧 Agent Loop 单测通过注入 allowSafety 保持协议焦点。验证方式为目标 Agent Loop/permissions 测试、`npm run build` 和全量 `npm test`，确认 17 个测试文件和 136 条测试全部通过。
+
+## add edit file tool
+
+- commit: add edit file tool
+- time: 2026-06-14 11:05
+- Why: P2-W5-T4 需要在全量覆盖式 `write_file` 之外提供更窄的编辑能力，让模型能基于已读上下文做唯一字符串替换；先实现精确替换而不是 patch 解析，可以把行为边界收敛到可测试的最小闭环，并避免提前引入复杂 diff 语义。
+- What: 新增默认 `edit_file` 工具，接受 `path`、`old_string` 和 `new_string`，只在 `old_string` 精确出现一次时写回 UTF-8 文本；未匹配、多处匹配、二进制文件和非法路径都会返回错误且不改文件。默认工具集和 AGENTS 能力描述同步包含 `edit_file`，P2 计划状态标记为完成。
+- How: 工具实现复用 `read_file`/`write_file` 的相对路径约束和二进制拒绝思路，用出现次数检查防止误替换；registry 集成测试验证默认工具顺序、write 分类和 OpenAI-compatible schema 不泄露运行时字段，工具单测覆盖成功替换、删除文本、空文件、未匹配、多匹配、非法参数、路径拒绝和二进制拒绝。验证方式为目标工具/registry/categories/Agent Loop 测试、`npm run build` 和全量 `npm test`，确认 17 个测试文件和 136 条测试全部通过。

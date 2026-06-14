@@ -1,4 +1,5 @@
 import type { ToolDefinition as ChatToolDefinition, ToolResult } from "../types.js";
+import { createEditFileTool } from "./edit-file.js";
 import { createReadFileTool } from "./read-file.js";
 import { createRunCommandTool } from "./run-command.js";
 import type { ToolDefinition } from "./types.js";
@@ -53,6 +54,7 @@ export function createDefaultToolRegistry(
   const registry = new ToolRegistry();
   registry.register(createReadFileTool(workingDirectory));
   registry.register(createWriteFileTool(workingDirectory));
+  registry.register(createEditFileTool(workingDirectory));
   registry.register(createRunCommandTool(workingDirectory));
   return registry;
 }
