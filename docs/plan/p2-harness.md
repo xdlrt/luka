@@ -125,7 +125,7 @@
 
 ---
 
-- [ ] **P2-W6-T1**: 实现测试执行器
+- [x] **P2-W6-T1**: 实现测试执行器
 
   **说明**：创建 `src/verification/test-runner.ts`。Agent 完成编辑后自动执行指定的测试命令。本质上是对 `run_command` 的封装，但增加了测试专用逻辑：记录 exit code、解析输出、判断 pass/fail。
 
