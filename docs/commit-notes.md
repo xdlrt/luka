@@ -215,3 +215,11 @@
 - Why: P2 的部分实现已经完成并有对应提交证据，但计划文档仍保持未完成状态，容易让后续执行者重复规划或误判项目进度；同时需要把“完成计划任务必须更新 checklist”沉淀成长期规则，避免路线图和真实进展再次脱节。
 - What: 将 P2-W4-T1 到 P2-W5-T1 标记为已完成，并在 AGENTS 的文档更新范式中新增要求：完成 `docs/plan/` 或主执行计划里的明确任务后，必须同次把对应 checklist 从 `[ ]` 改为 `[x]`，且只能标记真实完成的任务。
 - How: 只同步计划状态和协作规则，不改变代码行为；完成项对应前序提交中已有分类、权限确认、Agent Loop 接入、auto-approve 和危险命令规则的实现与测试证据。验证方式为 `git diff --check`，本次为文档状态与规则更新，未运行代码测试。
+
+## add working directory sandbox
+
+- commit: add working directory sandbox
+- time: 2026-06-14 11:02
+- Why: P2-W5-T2 需要把“路径是否仍在 `workingDirectory` 内”做成集中、可测试的判定能力；当前路径校验散落在各工具的 `validatePath` 里，若继续扩散，后续 Harness 接管执行链路时会重复迁移，也难以统一越狱判定口径。
+- What: 新增 `src/permissions/sandbox.ts`，导出 `checkPathInSandbox()` 与 `resolvePathInSandbox()`；判定规则为绝对路径直接拒绝、非空字符串校验、解析后用 `path.relative` 判断是否逃出 root，允许 `..` 只要解析后仍在 root 内，符号链接只做路径规范化不追踪真实目标。本次只交付沙箱模块与单测，不改动 `read_file`/`write_file`/`run_command` 或 Agent Loop，真实接入留给 P2-W5-T3。
+- How: 用 `path.resolve` 规范化 root 再以 `path.relative` 判断前缀，规避 `/tmp/app` 与 `/tmp/app2` 的 sibling 前缀误判；单测覆盖合法相对路径、`..` 内部归一、`..` 越狱、绝对路径、非法输入、sibling 前缀和 symlink 不追踪，并验证 `resolvePathInSandbox` 抛错原因与 check 决策一致。验证方式为 `npm test -- tests/permissions/sandbox.test.ts`、`npm run build` 和全量 `npm test`，确认 16 个测试文件和 119 条测试全部通过。

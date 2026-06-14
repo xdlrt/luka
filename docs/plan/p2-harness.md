@@ -80,7 +80,7 @@
 
 ---
 
-- [ ] **P2-W5-T2**: 实现沙箱边界 — 工作目录限制
+- [x] **P2-W5-T2**: 实现沙箱边界 — 工作目录限制
 
   **说明**：创建 `src/permissions/sandbox.ts`。所有文件操作（read、write）和命令执行都限制在配置的 `workingDirectory` 内。对路径做规范化和前缀检查。
 
@@ -110,7 +110,7 @@
 
 ---
 
-- [ ] **P2-W5-T4**: 实现 `edit_file` 工具（基于 patch/diff）
+- [x] **P2-W5-T4**: 实现 `edit_file` 工具（基于 patch/diff）
 
   **说明**：创建 `src/tools/edit-file.ts`。参数 `path`、`old_string`、`new_string`。与 write_file 不同，edit_file 做精确替换而非全量覆盖，更安全（减少意外覆盖风险）。先做简单的字符串替换，不生成 diff。
 
