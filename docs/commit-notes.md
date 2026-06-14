@@ -383,3 +383,11 @@
 - Why: 当前 Ink TUI 已经提供基础输入、运行状态和权限确认，但输入框仍停留在尾部追加/删除模型，无法像 claude-code-main 的终端输入一样进行基础光标编辑。为避免把 slash command、历史搜索、模型选择等未要求能力带进当前极简 Agent，本次只对齐现有输入和确认流程的键盘交互。
 - What: TUI 输入现在维护光标位置，支持在光标处插入字符、Left/Right/Home/End、Backspace/Delete，以及 Ctrl+A/E/B/F/U/K/W 等常见终端编辑键；运行中继续锁定普通输入，权限确认提示改为确认式文案并显式支持 Esc 取消。行为边界不变：权限决策仍只有批准/拒绝，真实工具执行仍走 Harness。
 - How: 使用 `inputRef` 与 `cursorOffsetRef` 保持 Ink 输入状态同步，通过局部编辑 helper 统一更新文本和光标，输入行用反色字符渲染 caret，避免引入完整 TextInput 组件或外部状态系统。测试补齐光标插入、删除、Ctrl 编辑、运行中输入忽略和 Esc 拒绝权限；已验证 `npm test -- tests/tui/app.test.tsx tests/tui/permission.test.tsx`、`npm run build`、全量 `npm test` 全部通过。
+
+## add mvp follow-up plans
+
+- commit: add mvp follow-up plans
+- time: 2026-06-14 22:40
+- Why: 当前实现已经跑通 Claude Code-style coding agent 的核心闭环，但如果要把它从学习型内核推进到可称为产品 MVP，还需要把会话恢复、TUI 工作台、命令权限、工具编排和 diff/验证闭环拆成可执行计划。直接在对话里描述优先级不利于后续接续开发，因此需要把 P6-P10 沉淀到 `docs/plan/` 并纳入总计划索引。
+- What: 新增 P6 到 P10 五份后续计划，分别覆盖会话持久化与恢复、REPL/TUI 交互升级、命令安全与权限规则增强、工具执行编排升级、文件 diff 与验证闭环增强；`docs/detailed-execution-plan.md` 同步加入新计划链接、核心模块和未完成里程碑。所有新增 checklist 均保持 `[ ]`，避免把规划误标为已实现能力。
+- How: 沿用既有阶段计划的格式，把每个方向拆成任务说明、验收标准、关键文件和验证要求；计划中特别保留现有项目边界，例如继续使用 OpenAI-compatible `chat/completions`、不声称完整 OS 沙箱、不把 SubAgent 放入 MVP 前五。验证方式为文档 diff 和状态检查，本次为纯文档计划更新，未运行代码测试。

@@ -10,6 +10,11 @@
 - [P3: 强能力 — 上下文管理 + 规划/TODO](./plan/p3-context-planning.md)
 - [P4: 可观测与持续评测 — Hooks + Telemetry + Eval](./plan/p4-continuous-evals.md)
 - [P5: 成作品 — 开源打磨 + 技术文章](./plan/p5-release-writing.md)
+- [P6: 会话持久化与恢复](./plan/p6-session-persistence.md)
+- [P7: REPL/TUI 交互升级](./plan/p7-tui-interaction.md)
+- [P8: 命令安全与权限规则增强](./plan/p8-command-permissions.md)
+- [P9: 工具执行编排升级](./plan/p9-tool-orchestration.md)
+- [P10: 文件 Diff 与验证闭环增强](./plan/p10-diff-verification.md)
 
 ## 范围
 
@@ -52,6 +57,11 @@ flowchart TD
 | 6 | Self-Verification | 编辑后自动运行测试，将失败结果回喂模型并限制重试次数 |
 | 7 | Observability & Hooks | 采集生命周期事件，执行可配置 hooks，并把本地 trace 或 HTTP feedback 回流到评测系统 |
 | 8 | Continuous Eval | 基于观测 trace 汇总指标、生成趋势报告，并在能力退化时触发门禁 |
+| 9 | Session Persistence | 保存和恢复消息历史、TODO、工具摘要、验证摘要和压缩边界 |
+| 10 | TUI Interaction | 提供持续 REPL 工作台、slash command、运行状态、中断和总结展示 |
+| 11 | Command Permissions | 对命令做语义分类、规则复用、权限提示和危险 prefix 控制 |
+| 12 | Tool Orchestration | 并发执行只读工具、串行写入命令、支持中断和大输出落盘 |
+| 13 | Diff & Verification | 为编辑生成 diff、检测外部修改冲突，并增强验证失败回传 |
 
 ## 里程碑
 
@@ -60,6 +70,11 @@ flowchart TD
 - [x] **P3 里程碑**：Agent 能处理多文件项目（grep/glob 检索 + 上下文压缩 + TodoWrite 规划）和扩展 eval 数据。
 - [x] **P4 里程碑**：Agent 具备可观测事件流、可扩展 hook 机制、数据回流能力和基于观测数据的持续 eval 平台。
 - [ ] **P5 里程碑**：形成可对外发布的开源仓库，并完成技术文章。
+- [ ] **P6 里程碑**：Agent 具备可落盘、可恢复、可继续执行的本地会话。
+- [ ] **P7 里程碑**：TUI 支持 slash command、运行状态、中断和统一运行总结。
+- [ ] **P8 里程碑**：命令权限系统支持语义分类、session/project 规则和更安全的 prefix 控制。
+- [ ] **P9 里程碑**：工具执行支持只读并发、写入串行、中断和大输出 artifact。
+- [ ] **P10 里程碑**：文件编辑具备 diff 摘要、冲突检测和更强验证回传。
 
 ---
 
