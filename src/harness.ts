@@ -18,7 +18,8 @@ import {
 import { runTests, type TestResult } from "./verification/test-runner.js";
 
 const EDIT_TOOL_NAMES = new Set(["write_file", "edit_file"]);
-const PATH_SCOPED_TOOL_NAMES = new Set(["read_file", "write_file", "edit_file"]);
+const REQUIRED_PATH_TOOL_NAMES = new Set(["read_file", "write_file", "edit_file"]);
+const OPTIONAL_PATH_TOOL_NAMES = new Set(["grep", "glob"]);
 
 export type PermissionChecker = (
   tool: ToolDefinition,
@@ -204,8 +205,18 @@ function checkToolSafety(
   input: Record<string, unknown>,
   options: { workingDirectory: string }
 ): HarnessDecision {
-  if (PATH_SCOPED_TOOL_NAMES.has(tool.name)) {
+  if (REQUIRED_PATH_TOOL_NAMES.has(tool.name)) {
     const sandbox = checkPathInSandbox(options.workingDirectory, input.path);
+    if (!sandbox.allowed) {
+      return { proceed: false, reason: `[blocked] ${sandbox.reason}` };
+    }
+  }
+
+  if (OPTIONAL_PATH_TOOL_NAMES.has(tool.name)) {
+    const sandbox = checkPathInSandbox(
+      options.workingDirectory,
+      input.path ?? "."
+    );
     if (!sandbox.allowed) {
       return { proceed: false, reason: `[blocked] ${sandbox.reason}` };
     }

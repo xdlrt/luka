@@ -3,7 +3,7 @@
 > **里程碑**：Agent 能处理多文件项目（grep/glob 检索 + 上下文压缩 + TodoWrite 规划）和扩展 eval 数据。
 
 ## 任务清单
-- [ ] **P3-W9-T1**: 实现 `grep` 工具
+- [x] **P3-W9-T1**: 实现 `grep` 工具
 
   **说明**：创建 `src/tools/grep.ts`。用正则搜索文件内容。参数：`pattern`（string，必填）、`path`（string，可选）、`include`（string，可选，glob 过滤）。使用 Node `fs` + 正则实现。
 
@@ -18,7 +18,7 @@
 
 ---
 
-- [ ] **P3-W9-T2**: 实现 `glob` 工具
+- [x] **P3-W9-T2**: 实现 `glob` 工具
 
   **说明**：创建 `src/tools/glob.ts`。按 glob 模式查找文件。参数：`pattern`（string，必填）、`path`（string，可选）。返回相对路径的文件列表。使用 `fast-glob` 包。
 
@@ -33,7 +33,7 @@
 
 ---
 
-- [ ] **P3-W9-T3**: 增强 System Prompt — 添加检索策略指导
+- [x] **P3-W9-T3**: 增强 System Prompt — 添加检索策略指导
 
   **说明**：更新 `src/context/system-prompt.ts`，添加模型如何使用 grep/glob 的指导。包括："使用 grep 找到相关代码再修改"、"用 glob 了解项目结构"、"阅读具体文件而不要猜测内容"。
 
@@ -47,7 +47,7 @@
 
 ---
 
-- [ ] **P3-W9-T4**: 实现消息历史管理器
+- [x] **P3-W9-T4**: 实现消息历史管理器
 
   **说明**：创建 `src/context/message-history.ts`。管理对话消息数组，提供：追加消息、估算 token 数、获取上下文总大小、序列化为 API 格式。
 
@@ -72,7 +72,7 @@
 
 ---
 
-- [ ] **P3-W9-T5**: 消息历史接入 Agent Loop
+- [x] **P3-W9-T5**: 消息历史接入 Agent Loop
 
   **说明**：重构 `src/agent-loop.ts`，使用 `MessageHistory` 管理消息，替代裸数组操作。
 

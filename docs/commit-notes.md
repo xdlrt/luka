@@ -279,3 +279,11 @@
 - Why: 当前用户需要先记住构建命令再手动执行 `node dist/index.js`，这对日常试用 CLI 和进入 REPL 都偏繁琐。项目已经有稳定的 TypeScript 构建入口和 CLI 入口，因此最小改动是提供一个 npm 脚本，把构建与启动串成单一命令，而不是新增未实现的全局安装或发布能力。
 - What: 新增 `npm start`，执行 `npm run build && node dist/index.js`；README 的快速开始和使用示例改为优先展示 `npm start`，带参数时使用 npm 的 `--` 透传约定。行为边界不变：仍然复用现有 CLI 参数解析、配置必填校验、REPL 和单次任务路径，没有改变工具权限、安全规则或 LLM 协议。
 - How: 在 `tests/index.test.ts` 中导入 `package.json`，用脚本断言固定快捷命令指向构建后的真实入口，避免帮助文档与可执行脚本漂移。验证方式为 `npm run test -- tests/index.test.ts`、`npm run build` 和全量 `npm test`，确认 28 个测试文件和 191 条测试全部通过。
+
+## add p3 search tools and message history
+
+- commit: add p3 search tools and message history
+- time: 2026-06-14 14:48
+- Why: P3-W9 的目标是让 Agent 从单文件最小闭环走向多文件项目处理能力。仅靠 `read_file` 会迫使模型猜文件位置或读取大量无关内容，缺少 `grep`/`glob` 的检索入口；同时 Agent Loop 继续直接维护裸消息数组，会让后续上下文压缩、预算管理和 token 观测难以集中接入。
+- What: 新增默认 `grep`、`glob` 只读检索工具，并在系统提示词中明确 glob 定位、grep 搜索、read_file 读完整上下文、edit_file 修改的工作流；Harness 对检索工具执行路径沙箱但不触发编辑后验证。新增 `MessageHistory` 管理 OpenAI-compatible 消息历史，Agent Loop 改为通过它追加 system/user/assistant/tool 消息，并在结果中返回 API usage 累计的 `totalTokens`。P3-W9-T1 到 T5 checklist 同步标记完成。
+- How: `glob` 使用 `fast-glob`，默认排除 `node_modules`、`.git`、`dist`，输出排序并限制前 100 条；`grep` 复用 glob 遍历文本文件，跳过二进制内容，按 `path:line: text` 输出并限制前 50 条。`MessageHistory` 保持协议对象原样，只提供浅拷贝数组和约 4 字符/token 的估算，避免把运行时状态混入 `src/types.ts`。验证方式为 `npm run build` 和全量 `npm test`，确认 31 个测试文件和 218 条测试全部通过；期间发现默认 registry 与 Harness 测试需要同步覆盖新检索工具，已补齐顺序、schema、沙箱和只读不验证断言。

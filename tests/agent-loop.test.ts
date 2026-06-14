@@ -47,6 +47,7 @@ describe("runAgentLoop", () => {
       turnsUsed: 1,
       toolsCalled: [],
       success: true,
+      totalTokens: 2,
     });
     expect(harness.executeTool).not.toHaveBeenCalled();
   });
@@ -74,6 +75,7 @@ describe("runAgentLoop", () => {
     expect(result.turnsUsed).toBe(2);
     expect(result.toolsCalled).toEqual(["echo"]);
     expect(result.finalMessage).toBe("done");
+    expect(result.totalTokens).toBe(4);
     expect(harness.executeTool).toHaveBeenCalledWith(
       "echo",
       { x: 1 },
@@ -96,7 +98,11 @@ describe("runAgentLoop", () => {
     await runAgentLoop("go", baseConfig, tools, client, harness);
 
     const secondCallMessages = sentMessages[1];
+    const assistantMessage = secondCallMessages.find(
+      (m) => m.role === "assistant"
+    );
     const toolMessage = secondCallMessages.find((m) => m.role === "tool");
+    expect(assistantMessage?.tool_calls?.[0]?.id).toBe("call-xyz");
     expect(toolMessage?.tool_call_id).toBe("call-xyz");
     expect(toolMessage?.content).toBe("echo-output");
   });
@@ -128,6 +134,7 @@ describe("runAgentLoop", () => {
     expect(result.toolsCalled).toEqual(["read", "write"]);
     expect(result.turnsUsed).toBe(3);
     expect(result.success).toBe(true);
+    expect(result.totalTokens).toBe(6);
   });
 
   it("stops and reports failure when maxTurns is reached", async () => {
@@ -151,6 +158,32 @@ describe("runAgentLoop", () => {
     expect(result.success).toBe(false);
     expect(result.turnsUsed).toBe(2);
     expect(result.toolsCalled).toEqual(["echo", "echo"]);
+    expect(result.totalTokens).toBe(4);
+  });
+
+  it("logs approximate context size in verbose mode", async () => {
+    const { client } = createClient([textResponse("done")]);
+    const tools = new ToolRegistry();
+    const harness = createHarness();
+    const logger = {
+      debug: vi.fn(),
+      info: vi.fn(),
+      warn: vi.fn(),
+      error: vi.fn(),
+    };
+
+    await runAgentLoop(
+      "hi",
+      { ...baseConfig, verbose: true },
+      tools,
+      client,
+      harness,
+      logger
+    );
+
+    expect(logger.debug).toHaveBeenCalledWith(
+      expect.stringMatching(/^\[CONTEXT\] messages=2, approxTokens=\d+$/)
+    );
   });
 
   it("injects verification messages returned by the harness", async () => {

@@ -6,6 +6,8 @@ const TOOL_CATEGORIES: Record<string, RegisteredToolCategory> = {
   write_file: "write",
   edit_file: "write",
   run_command: "command",
+  grep: "read",
+  glob: "read",
 };
 
 export function classifyTool(toolName: string): ToolCategory {

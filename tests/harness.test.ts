@@ -109,6 +109,67 @@ describe("Harness", () => {
     expect(readFile.execute).not.toHaveBeenCalled();
   });
 
+  it("blocks grep and glob sandbox escapes before permission or execution", async () => {
+    const registry = new ToolRegistry();
+    const grep = createTool("grep", "read", "secret");
+    const glob = createTool("glob", "read", "secret");
+    registry.register(grep);
+    registry.register(glob);
+    const permissionCheck = vi.fn(async () => ({ approved: true as const }));
+    const harness = createHarness({ permissionCheck });
+
+    const grepResult = await harness.executeTool(
+      "grep",
+      { pattern: "secret", path: "../../etc" },
+      registry,
+      "tools: grep"
+    );
+    const globResult = await harness.executeTool(
+      "glob",
+      { pattern: "**/*", path: "../../etc" },
+      registry,
+      "tools: glob"
+    );
+
+    expect(grepResult).toEqual({
+      content: "[blocked] path escapes the working directory",
+    });
+    expect(globResult).toEqual({
+      content: "[blocked] path escapes the working directory",
+    });
+    expect(permissionCheck).not.toHaveBeenCalled();
+    expect(grep.execute).not.toHaveBeenCalled();
+    expect(glob.execute).not.toHaveBeenCalled();
+  });
+
+  it("executes read-only search tools without verification", async () => {
+    const registry = new ToolRegistry();
+    registry.register(createTool("grep", "read", "match"));
+    registry.register(createTool("glob", "read", "file.ts"));
+    const testRunner = vi.fn(async () => testResult(false));
+    const harness = createHarness({
+      testCommand: "npm test",
+      testRunner,
+    });
+
+    const grepResult = await harness.executeTool(
+      "grep",
+      { pattern: "match" },
+      registry,
+      "tools: grep"
+    );
+    const globResult = await harness.executeTool(
+      "glob",
+      { pattern: "**/*.ts" },
+      registry,
+      "tools: glob"
+    );
+
+    expect(grepResult).toEqual({ content: "match" });
+    expect(globResult).toEqual({ content: "file.ts" });
+    expect(testRunner).not.toHaveBeenCalled();
+  });
+
   it("blocks dangerous commands before permission or execution", async () => {
     const registry = new ToolRegistry();
     const runCommand = createTool("run_command", "command", "deleted");

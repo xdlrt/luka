@@ -126,6 +126,7 @@ describe("P1 end-to-end agent demo", () => {
       turnsUsed: 3,
       toolsCalled: ["write_file", "read_file"],
       success: true,
+      totalTokens: 6,
     });
     expect(sendMessage).toHaveBeenCalledTimes(3);
     expect(permissionCheck).toHaveBeenCalledTimes(2);

@@ -1,16 +1,17 @@
 import type { AppConfig } from "./config.js";
+import { MessageHistory } from "./context/message-history.js";
 import { SYSTEM_PROMPT } from "./context/system-prompt.js";
 import { Harness, type HarnessLike } from "./harness.js";
 import { createLogger, type Logger } from "./logger.js";
 import { LLMClient, parseResponse } from "./llm-client.js";
 import type { ToolRegistry } from "./tools/index.js";
-import type { Message } from "./types.js";
 
 export interface AgentResult {
   finalMessage: string;
   turnsUsed: number;
   toolsCalled: string[];
   success: boolean;
+  totalTokens: number;
 }
 
 export async function runAgentLoop(
@@ -23,29 +24,35 @@ export async function runAgentLoop(
 ): Promise<AgentResult> {
   const activeHarness =
     harness ?? Harness.fromAppConfig(config, { logger });
-  const messages: Message[] = [
+  const history = new MessageHistory([
     { role: "system", content: SYSTEM_PROMPT },
     { role: "user", content: userInput },
-  ];
+  ]);
   const toolsCalled: string[] = [];
   const toolDefinitions = tools.getToolDefinitions();
 
   let lastText = "";
   let lastModelAction = "";
+  let totalTokens = 0;
 
   for (let turn = 1; turn <= config.maxTurns; turn++) {
     logger.info(`[TURN ${turn}] started`);
     activeHarness.beginTurn();
     const turnStartedAt = Date.now();
+    const messages = history.getMessages();
+    logger.debug(
+      `[CONTEXT] messages=${messages.length}, approxTokens=${history.getApproxTokenCount()}`
+    );
     const response = await client.sendMessage(messages, {
       tools: toolDefinitions,
     });
+    totalTokens += response.usage.total_tokens;
     logger.debug(
       `[TURN ${turn}] LLM response received in ${Date.now() - turnStartedAt}ms`
     );
     const assistantMessage = response.choices[0]?.message;
     if (assistantMessage !== undefined) {
-      messages.push(assistantMessage);
+      history.append(assistantMessage);
     }
 
     const parsed = parseResponse(response);
@@ -63,6 +70,7 @@ export async function runAgentLoop(
         turnsUsed: turn,
         toolsCalled,
         success: true,
+        totalTokens,
       };
     }
 
@@ -74,13 +82,13 @@ export async function runAgentLoop(
         tools,
         lastModelAction
       );
-      messages.push({
+      history.append({
         role: "tool",
         tool_call_id: call.id,
         content: result.content,
       });
       if (result.verificationMessage !== undefined) {
-        messages.push({
+        history.append({
           role: "assistant",
           content: result.verificationMessage,
         });
@@ -95,6 +103,7 @@ export async function runAgentLoop(
     turnsUsed: config.maxTurns,
     toolsCalled,
     success: false,
+    totalTokens,
   };
 }
 

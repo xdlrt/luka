@@ -24,6 +24,8 @@ describe("default tool registry integration", () => {
       "write_file",
       "edit_file",
       "run_command",
+      "grep",
+      "glob",
     ]);
     expect(
       registry.getAll().map((tool) => [tool.name, tool.category])
@@ -32,6 +34,8 @@ describe("default tool registry integration", () => {
       ["write_file", "write"],
       ["edit_file", "write"],
       ["run_command", "command"],
+      ["grep", "read"],
+      ["glob", "read"],
     ]);
   });
 
@@ -40,7 +44,14 @@ describe("default tool registry integration", () => {
 
     expect(
       registry.getToolDefinitions().map((tool) => tool.function.name)
-    ).toEqual(["read_file", "write_file", "edit_file", "run_command"]);
+    ).toEqual([
+      "read_file",
+      "write_file",
+      "edit_file",
+      "run_command",
+      "grep",
+      "glob",
+    ]);
     for (const definition of registry.getToolDefinitions()) {
       expect(definition.type).toBe("function");
       expect(definition.function.description).not.toBe("");
@@ -82,6 +93,16 @@ describe("default tool registry integration", () => {
         name: "run_command",
         input: { command: "node -e \"console.log('ok')\"" },
       },
+      {
+        id: "call-grep",
+        name: "grep",
+        input: { pattern: "edited", include: "**/*.txt" },
+      },
+      {
+        id: "call-glob",
+        name: "glob",
+        input: { pattern: "**/*.txt" },
+      },
     ];
 
     const results = [];
@@ -108,6 +129,14 @@ describe("default tool registry integration", () => {
     expect(results[4].tool_call_id).toBe("run_command");
     expect(results[4].error).toBeUndefined();
     expect(results[4].output).toMatch(/ok/);
+    expect(results[5]).toEqual({
+      tool_call_id: "grep",
+      output: "notes/hello.txt:1: hello edited",
+    });
+    expect(results[6]).toEqual({
+      tool_call_id: "glob",
+      output: "notes/hello.txt",
+    });
   });
 
   it("throws when a simulated tool call names an unknown tool", async () => {

@@ -158,6 +158,7 @@ describe("handleUserInput", () => {
       turnsUsed: 1,
       toolsCalled: [],
       success: true,
+      totalTokens: 2,
     }));
 
     const shouldContinue = await handleUserInput(
@@ -180,6 +181,7 @@ describe("handleUserInput", () => {
       turnsUsed: 2,
       toolsCalled: ["read_file", "write_file"],
       success: true,
+      totalTokens: 4,
     }));
 
     await handleUserInput(
@@ -203,6 +205,7 @@ describe("handleUserInput", () => {
       turnsUsed: 3,
       toolsCalled: ["run_command"],
       success: false,
+      totalTokens: 6,
     }));
 
     await handleUserInput(

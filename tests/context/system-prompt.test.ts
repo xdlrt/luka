@@ -20,6 +20,15 @@ describe("SYSTEM_PROMPT", () => {
     expect(SYSTEM_PROMPT).toContain("不要执行破坏性操作");
   });
 
+  it("contains search workflow guidance", () => {
+    expect(SYSTEM_PROMPT).toContain("先用 glob 了解文件结构");
+    expect(SYSTEM_PROMPT).toContain("查找符号、函数、错误文本或配置项时用 grep");
+    expect(SYSTEM_PROMPT).toContain("read_file 阅读目标文件的完整上下文");
+    expect(SYSTEM_PROMPT).toContain(
+      "glob 定位文件 → grep 找相关代码 → read_file 获取上下文 → edit_file 修改"
+    );
+  });
+
   it("does not contain placeholder text", () => {
     expect(SYSTEM_PROMPT).not.toMatch(/TODO|TBD|PLACEHOLDER/i);
   });

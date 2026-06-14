@@ -50,6 +50,7 @@ describe("eval runner", () => {
         turnsUsed: 2,
         toolsCalled: ["write_file"],
         success: true,
+        totalTokens: 4,
       };
     });
 
@@ -67,6 +68,7 @@ describe("eval runner", () => {
       turnsUsed: 1,
       toolsCalled: [],
       success: true,
+      totalTokens: 2,
     }));
 
     const result = await runEvalTask(createTask("missing-file"), runner);
@@ -90,6 +92,7 @@ describe("eval runner", () => {
         turnsUsed: 1,
         toolsCalled: ["write_file"],
         success: true,
+        totalTokens: 2,
       };
     });
 
@@ -125,6 +128,7 @@ describe("eval runner", () => {
         turnsUsed: 1,
         toolsCalled: ["write_file"],
         success: true,
+        totalTokens: 2,
       };
     });
 

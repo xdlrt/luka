@@ -8,6 +8,8 @@ describe("classifyTool", () => {
     expect(classifyTool("write_file")).toBe("write");
     expect(classifyTool("edit_file")).toBe("write");
     expect(classifyTool("run_command")).toBe("command");
+    expect(classifyTool("grep")).toBe("read");
+    expect(classifyTool("glob")).toBe("read");
   });
 
   it("returns unknown for unregistered tool names", () => {
