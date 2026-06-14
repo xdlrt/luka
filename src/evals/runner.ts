@@ -75,11 +75,7 @@ export async function runEvalTask(
 
   try {
     await writeSetupFiles(tempDir, task);
-    const config = loadConfig({
-      workingDirectory: tempDir,
-      autoApprove: true,
-      testCommand: task.testCommand,
-    });
+    const config = createEvalConfig(task, tempDir, runner);
     const registry = createDefaultToolRegistry(tempDir);
     const result = await runner(task.prompt, config, registry);
     const failureReason = await evaluateExpectations(tempDir, task, result);
@@ -106,6 +102,32 @@ export async function runEvalTask(
   } finally {
     await rm(tempDir, { recursive: true, force: true });
   }
+}
+
+function createEvalConfig(
+  task: EvalTask,
+  workingDirectory: string,
+  runner: AgentRunner
+): AppConfig {
+  if (runner === runAgentLoop) {
+    return loadConfig({
+      workingDirectory,
+      autoApprove: true,
+      testCommand: task.testCommand,
+    });
+  }
+
+  return {
+    apiKey: "eval-test-key",
+    baseURL: "https://eval.invalid",
+    model: "eval-test-model",
+    maxTurns: 20,
+    workingDirectory,
+    autoApprove: true,
+    testCommand: task.testCommand,
+    maxRetries: 3,
+    verbose: false,
+  };
 }
 
 export async function loadTasks(tasksDir: string): Promise<EvalTask[]> {
