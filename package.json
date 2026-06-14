@@ -8,6 +8,7 @@
     "build": "tsc",
     "ci": "npm run build && npm test",
     "dev": "tsc --watch",
+    "start": "npm run build && node dist/index.js",
     "test": "vitest run"
   },
   "engines": {

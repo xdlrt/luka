@@ -1,4 +1,5 @@
 import { describe, expect, it, vi } from "vitest";
+import packageJson from "../package.json" with { type: "json" };
 import { handleUserInput, parseCliArgs } from "../src/index.js";
 import { ToolRegistry } from "../src/tools/index.js";
 import type { AppConfig } from "../src/config.js";
@@ -108,6 +109,14 @@ describe("parseCliArgs", () => {
       verbose: true,
       initialInput: "fix",
     });
+  });
+});
+
+describe("package scripts", () => {
+  it("provides a quick start command for the CLI entrypoint", () => {
+    expect(packageJson.scripts.start).toBe(
+      "npm run build && node dist/index.js"
+    );
   });
 });
 

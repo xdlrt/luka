@@ -47,14 +47,13 @@ MAX_TURNS=20
 ### 构建和运行
 
 ```bash
-npm run build
-node dist/index.js "阅读 package.json 并总结这个项目"
+npm start -- "阅读 package.json 并总结这个项目"
 ```
 
 不传任务时会进入 REPL：
 
 ```bash
-node dist/index.js
+npm start
 ```
 
 在 REPL 中输入 `.exit` 退出。
@@ -64,7 +63,7 @@ node dist/index.js
 ### 读取并解释文件
 
 ```bash
-node dist/index.js "读取 package.json，说明这个项目如何运行测试"
+npm start -- "读取 package.json，说明这个项目如何运行测试"
 ```
 
 模型通常会调用 `read_file` 获取文件内容，再给出总结。
@@ -72,7 +71,7 @@ node dist/index.js "读取 package.json，说明这个项目如何运行测试"
 ### 修改文件并自动批准
 
 ```bash
-node dist/index.js --auto-approve "在 docs 目录下创建一个 notes.md，写入本项目的运行方式"
+npm start -- --auto-approve "在 docs 目录下创建一个 notes.md，写入本项目的运行方式"
 ```
 
 `--auto-approve` 只跳过人工确认。路径检查、命令安全规则、工具参数校验和工具错误回传仍然会执行。
@@ -80,7 +79,7 @@ node dist/index.js --auto-approve "在 docs 目录下创建一个 notes.md，写
 ### 编辑后运行测试
 
 ```bash
-node dist/index.js --test-command "npm test" "修复当前测试失败"
+npm start -- --test-command "npm test" "修复当前测试失败"
 ```
 
 当模型成功调用 `write_file` 或 `edit_file` 后，Agent 会运行指定测试命令，把测试结果摘要加入对话，让模型决定是否继续修复。默认最大重试次数为 3，可通过 `--max-retries` 或 `MAX_RETRIES` 调整。
