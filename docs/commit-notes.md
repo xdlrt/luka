@@ -263,3 +263,11 @@
 - Why: W6 已经能在编辑后运行测试并把结果回喂模型，但失败结果只是一条普通验证消息，模型没有明确的修复语义，也缺少重试上限和过程日志。P2-W7 需要把这条链路升级为有限自修复循环，同时保持 Harness 仍留到 W8，避免过早把权限、安全、验证和执行统一成新抽象。
 - What: 新增 `retry-loop` 状态机记录验证失败次数、失败摘要和模型动作，测试失败时注入 `Tests failed. Please fix the issues:`，达到 `maxRetries` 后注入 `Unable to fix after n attempts` 并继续主对话；`AppConfig` 与 CLI 新增 `maxRetries` 和 `verbose`，logger 替换 Agent Loop 中直接 `console.log` 的 turn/tool/verify 输出。P2-W7 checklist 标记为完成，并新增完整自修复 E2E，证明失败测试能驱动下一轮编辑直到通过。
 - How: 重试模块只处理状态和消息生成，不直接调用 LLM 或工具，Agent Loop 仍负责 tool call 协议、权限、安全和测试执行；这样既能实现 W7 行为，又不抢 W8 Harness 的边界。验证覆盖配置读取与非法值、CLI 参数、logger 注入、retry 状态机、Agent Loop 失败回喂/上限停止/关闭验证/工具错误不验证，以及临时 `reverseString` 项目的真实编辑和测试执行。验证方式为 `npm run build`、目标 W7/W6 测试和全量 `npm test`，确认 25 个测试文件和 171 条测试全部通过。
+
+## add npm start cli shortcut
+
+- commit: add npm start cli shortcut
+- time: 2026-06-14 11:59
+- Why: 当前用户需要先记住构建命令再手动执行 `node dist/index.js`，这对日常试用 CLI 和进入 REPL 都偏繁琐。项目已经有稳定的 TypeScript 构建入口和 CLI 入口，因此最小改动是提供一个 npm 脚本，把构建与启动串成单一命令，而不是新增未实现的全局安装或发布能力。
+- What: 新增 `npm start`，执行 `npm run build && node dist/index.js`；README 的快速开始和使用示例改为优先展示 `npm start`，带参数时使用 npm 的 `--` 透传约定。行为边界不变：仍然复用现有 CLI 参数解析、配置必填校验、REPL 和单次任务路径，没有改变工具权限、安全规则或 LLM 协议。
+- How: 在 `tests/index.test.ts` 中导入 `package.json`，用脚本断言固定快捷命令指向构建后的真实入口，避免帮助文档与可执行脚本漂移。验证方式为 `npm run test -- tests/index.test.ts`、`npm run build` 和全量 `npm test`，确认 28 个测试文件和 191 条测试全部通过。
