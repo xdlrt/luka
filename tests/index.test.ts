@@ -151,6 +151,12 @@ describe("package scripts", () => {
       "npm run build && node dist/index.js"
     );
   });
+
+  it("provides a mock eval command that does not require model credentials", () => {
+    expect(packageJson.scripts["eval:mock"]).toBe(
+      "npm run build && node dist/evals/runner.js --suite smoke --mock"
+    );
+  });
 });
 
 describe("handleUserInput", () => {

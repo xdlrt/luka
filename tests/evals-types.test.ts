@@ -7,6 +7,7 @@ describe("parseEvalTask", () => {
       id: "01-create-file",
       description: "Create file",
       difficulty: "easy",
+      critical: true,
       prompt: "Create notes.txt",
       setup: { files: { "README.md": "hello" } },
       expectations: {
@@ -16,6 +17,7 @@ describe("parseEvalTask", () => {
     });
 
     expect(task.id).toBe("01-create-file");
+    expect(task.critical).toBe(true);
     expect(task.setup.files["README.md"]).toBe("hello");
     expect(task.expectations.files?.[0]?.contains).toEqual(["hello"]);
   });

@@ -1,0 +1,4 @@
+{
+  "name": "smoke",
+  "taskIds": ["01-create-file", "02-fix-typo"]
+}

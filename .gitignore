@@ -4,3 +4,7 @@ dist/
 .env
 .env.local
 coverage/
+evals/dashboard/
+evals/results/*.json
+evals/results/latest-summary.md
+evals/results/traces/

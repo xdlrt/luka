@@ -1,0 +1,42 @@
+name: Evals
+
+on:
+  pull_request:
+
+jobs:
+  evals:
+    name: Continuous eval
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - name: Install dependencies
+        run: npm i
+
+      - name: Build
+        run: npm run build
+
+      - name: Test
+        run: npm test
+
+      - name: Mock eval
+        run: npm run eval:mock
+
+      - name: Upload eval artifacts
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: eval-artifacts
+          path: |
+            evals/results/**/*.json
+            evals/results/**/*.jsonl
+            evals/results/latest-summary.md
+            evals/dashboard/data.json
+          if-no-files-found: ignore

@@ -1,0 +1,15 @@
+{
+  "name": "regression",
+  "taskIds": [
+    "01-create-file",
+    "02-fix-typo",
+    "03-fix-logic-bug",
+    "04-add-function",
+    "05-refactor",
+    "06-grep-fix",
+    "07-add-patterned-function",
+    "08-cross-file-rename",
+    "09-add-tests-for-module",
+    "10-implement-from-spec"
+  ]
+}

@@ -335,3 +335,11 @@
 - Why: P3 已经有多文件 eval 和规划状态，但运行过程仍只能从最终结果倒推，缺少统一事件流来复盘 LLM、工具、权限、验证和 eval 的真实路径。P4-W12 先建设最小可观测底座，把事件模型、hook 扩展点和 JSONL 事实来源固定下来，为 W13 的 trace 消费、趋势报告和退化门禁打基础。
 - What: 新增 `AgentEvent` schema、脱敏摘要、`EventRecorder`、本地 JSONL sink、HTTP feedback sink 和 command/http hook runtime；CLI 支持 `--hooks-config`，配置层支持观测目录与 feedback 环境变量。Agent Loop emit LLM request/response 和 Stop，Harness emit 工具前后、权限和编辑后验证，eval task emit 开始/结束；P4-W12-T1 到 T4 checklist 标记完成。协议边界不变：工具 schema 仍不暴露运行时字段，工具异常仍回传模型，观测和 hook 默认不改变 Agent 成败。
 - How: recorder 被设计成唯一观测入口，但对主链路只暴露同步 `emit()`：调用方只创建、脱敏、校验并入队事件，JSONL、HTTP feedback 和 hook 由后台 drain 顺序处理，请求结束只做 500ms 有界 flush。sink/hook 失败只写 stderr 或 HookFailure 事件，避免把观测链路变成执行链路的新故障源；payload 统一经过敏感 key 与凭证样式脱敏，并限制摘要长度，防止把密钥、完整环境变量或大段命令输出写进 trace。测试覆盖事件校验/脱敏、JSONL/HTTP sink、hook 顺序/失败/非递归、配置优先级、CLI 参数、Agent Loop/Harness/eval 生命周期事件和非阻塞 flush 超时。验证方式为新增 observability 测试、配置/CLI/Agent/Harness/eval 定向测试、`npm run build` 和全量 `npm test`。
+
+## add trace based continuous evals
+
+- commit: add trace based continuous evals
+- time: 2026-06-14 16:10
+- Why: P4-W12 已经把 Agent、Harness 和 eval 的生命周期写成 JSONL trace，但 eval runner 仍主要依赖自身的临时计数，无法复用普通 CLI 和 eval 共享的观测证据，也缺少 repeat、报告和退化门禁。W13 的目标是把 trace 从旁路日志提升为持续评测的事实来源，同时保持真实 LLM eval 与无密钥 PR 校验分离。
+- What: 新增 trace reader、baseline gate 和 Markdown/dashboard report；eval runner 支持 suite、repeat、mock eval、稳定 trace 目录、baseline check，并把 result schema 扩展为 runId/tracePath/toolCalls/permissionDeniedCount/verificationRuns/feedbackStatus 等 trace 汇总指标。新增 smoke/regression suite、`npm run eval:mock`、eval workflow artifact 上传，README 更新 hooks/trace 和持续 eval 用法，P4-W13-T1 到 T4 checklist 同步标记完成。
+- How: 每个 eval attempt 使用独立 runId，把 trace 写入 `evals/results/traces/{suiteRunId}/`，任务临时目录删除后仍可复盘；runner 仍负责文件/输出/测试期望，行为指标只从 JSONL 汇总，避免重复埋点。mock eval 只验证平台链路并满足文件期望，不伪造成真实模型能力；baseline gate 先用保守阈值检查 pass rate、平均 turns/tool calls、flaky rate 和 feedback health。验证覆盖 trace 解析、runner suite/repeat/mock、baseline 退化、report/dashboard、脚本和 CI 配置。
