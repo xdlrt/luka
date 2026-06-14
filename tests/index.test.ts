@@ -8,6 +8,7 @@ import {
   handleUserInput,
   isCliEntrypoint,
   parseCliArgs,
+  runCli,
 } from "../src/index.js";
 import { ToolRegistry } from "../src/tools/index.js";
 import type { AppConfig } from "../src/config.js";
@@ -210,6 +211,66 @@ describe("package scripts", () => {
     expect(packageJson.scripts["eval:mock"]).toBe(
       "npm run build && node dist/evals/runner.js --suite smoke --mock"
     );
+  });
+});
+
+describe("runCli", () => {
+  it("launches the Ink TUI when no initial input is provided", async () => {
+    vi.stubEnv("ARK_API_KEY", "key-123");
+    vi.stubEnv("ARK_MODEL", "doubao-test");
+    const tuiRunner = vi.fn(async () => undefined);
+
+    await runCli([], tuiRunner);
+
+    expect(tuiRunner).toHaveBeenCalledWith(
+      expect.objectContaining({
+        apiKey: "key-123",
+        model: "doubao-test",
+      }),
+      expect.any(ToolRegistry)
+    );
+  });
+
+  it("keeps one-shot task execution outside the TUI", async () => {
+    vi.stubEnv("ARK_API_KEY", "key-123");
+    vi.stubEnv("ARK_MODEL", "doubao-test");
+    const tuiRunner = vi.fn(async () => undefined);
+    const writeLine = vi
+      .spyOn(console, "log")
+      .mockImplementation(() => undefined);
+    const originalFetch = globalThis.fetch;
+    const fetchMock = vi.fn(async () => ({
+      ok: true,
+      text: async () =>
+        JSON.stringify({
+          id: "chatcmpl-1",
+          object: "chat.completion",
+          created: 1,
+          model: "doubao-test",
+          choices: [
+            {
+              index: 0,
+              message: { role: "assistant", content: "done" },
+              finish_reason: "stop",
+            },
+          ],
+          usage: {
+            prompt_tokens: 1,
+            completion_tokens: 1,
+            total_tokens: 2,
+          },
+        }),
+    } as Response));
+    globalThis.fetch = fetchMock as typeof fetch;
+
+    try {
+      await runCli(["hello"], tuiRunner);
+    } finally {
+      globalThis.fetch = originalFetch;
+    }
+
+    expect(tuiRunner).not.toHaveBeenCalled();
+    expect(writeLine).toHaveBeenCalledWith("done");
   });
 });
 

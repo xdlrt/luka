@@ -359,3 +359,11 @@
 - Why: README 已经基本描述 P4 后的能力，但 AGENTS 仍停在 P1 最小闭环，继续保留“没有 Harness、没有 grep/glob/todo_write、没有写前确认”的约束会误导后续维护者，也会让文档审查时无法判断哪些能力是真实现状、哪些仍是路线图。P5 文档也需要收窄“清理代码”任务，避免把 JSDoc 扫描和当前代码底线混在同一个强制任务里。
 - What: AGENTS 的项目边界更新为当前 P1-P4 主链路，明确默认 7 个工具、Harness、上下文压缩、TodoWrite、observability 和持续 eval 平台，同时把未成熟能力限定为完整 OS 沙箱、完整命令安全、检索增强、发布级包分发和长期趋势运营。README 补齐 hook/feedback 配置、架构图中的检索/规划工具和观测链路、默认工具表以及安全边界免责声明；总执行计划把 P4 里程碑与子计划完成状态对齐。P5 发布计划将首个任务聚焦为代码清理，弱化一次性补齐所有 JSDoc 的要求。
 - How: 先用源码和测试核对当前真实能力，再只改文档中的能力边界、维护约束和配置说明，不改运行时代码。验证方式为旧描述 `rg` 检查、工具/配置一致性搜索、`npm run build`、全量 `npm test` 和 `git diff --check`；测试结果为 44 个测试文件、304 条测试全部通过。
+
+## add ink tui
+
+- commit: add ink tui
+- time: 2026-06-14 18:01
+- Why: readline REPL 已经能跑通最小闭环，但多轮交互缺少运行状态、消息流、工具摘要和权限确认的结构化呈现，用户很难像使用 Claude Code 一样持续输入任务并观察 agent 当前状态。首版选择基础 Ink TUI，而不是完整 IDE 或流式渲染，是为了改善交互体验，同时不扩大 Agent Loop、工具协议和 Harness 安全边界。
+- What: 无参数启动改为进入基础 Ink TUI，带一次性任务时仍保持原 CLI 路径；新增 TUI 消息流、单行输入、运行态、TODO 展示、工具摘要和内联 `y/n` 权限确认。会话执行和 observability recorder 从 CLI 入口抽到共享 session 层，TUI 和一次性 CLI 复用同一条 tool call -> Harness -> ToolRegistry 主链路。依赖新增 Ink/React 和 TUI 测试库，TS/Vitest 配置支持 TSX，并关闭测试文件并行以稳定终端交互测试。
+- How: TUI 自己维护输入缓冲和权限确认 promise，但所有真实工具执行仍由 Harness 编排，`--auto-approve` 仍只跳过人工确认而不绕过路径、命令规则或参数校验。实现过程中尝试过显式终端光标定位，但 Ink/Yoga 坐标在当前布局下会把真实光标放错位置，最终删除显式光标逻辑，只保留普通输入文本，避免错误视觉状态影响可用性。验证方式为 `npm run build`、`npm test -- tests/tui/app.test.tsx tests/tui/permission.test.tsx`、全量 `npm test` 和 `git diff --check`；最终全量测试为 46 个测试文件、323 条测试全部通过。

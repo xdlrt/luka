@@ -1,47 +1,15 @@
 #!/usr/bin/env node
-import { createInterface } from "node:readline/promises";
-import { randomUUID } from "node:crypto";
 import { realpathSync } from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
-import { stdin as input, stdout as output } from "node:process";
-import { runAgentLoop, type AgentResult } from "./agent-loop.js";
 import { loadConfig, type AppConfig } from "./config.js";
-import {
-  DEFAULT_HOOKS_CONFIG_FILE,
-  HookRuntime,
-  loadHookConfig,
-} from "./observability/hooks.js";
-import { EventRecorder } from "./observability/recorder.js";
-import {
-  HttpFeedbackSink,
-  LocalJsonlSink,
-  type EventSink,
-} from "./observability/sinks.js";
+import { runAgentSession, type AgentRunner } from "./session.js";
 import { createDefaultToolRegistry } from "./tools/index.js";
 import type { ToolRegistry } from "./tools/index.js";
-
-const OBSERVABILITY_FLUSH_TIMEOUT_MS = 500;
+import { runTui } from "./tui/index.js";
 
 type WriteLine = (line: string) => void;
-type AgentRunner = (
-  userInput: string,
-  config: AppConfig,
-  tools: ToolRegistry,
-  recorder?: EventRecorder
-) => Promise<AgentResult>;
-
-const defaultAgentRunner: AgentRunner = (userInput, config, tools, recorder) =>
-  runAgentLoop(
-    userInput,
-    config,
-    tools,
-    undefined,
-    undefined,
-    undefined,
-    undefined,
-    recorder
-  );
+type TuiRunner = (config: AppConfig, registry: ToolRegistry) => Promise<void>;
 
 /** Parsed command-line options plus the user prompt after agent flags are removed. */
 export interface ParsedCliArgs {
@@ -118,27 +86,15 @@ export async function handleUserInput(
   config: AppConfig,
   registry: ToolRegistry,
   writeLine: WriteLine = console.log,
-  runner: AgentRunner = defaultAgentRunner
+  runner?: AgentRunner
 ): Promise<boolean> {
   const userInput = rawInput.trim();
   if (userInput === "") return true;
   if (userInput === ".exit") return false;
 
-  const recorder = await createEventRecorder(config);
   try {
-    recorder.emit("SessionStart", {
-      workingDirectory: config.workingDirectory,
-      model: config.model,
-    });
-    recorder.emit("UserPromptSubmit", {
-      input: userInput,
-      chars: userInput.length,
-    });
-    const result = await runner(userInput, config, registry, recorder);
-    recorder.emit("SessionEnd", {
-      success: result.success,
-      turnsUsed: result.turnsUsed,
-      toolsCalled: result.toolsCalled,
+    const result = await runAgentSession(userInput, config, registry, {
+      runner,
     });
     if (result.finalMessage !== "") {
       writeLine(result.finalMessage);
@@ -154,14 +110,7 @@ export async function handleUserInput(
     }
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error);
-    recorder.emit("SessionEnd", {
-      success: false,
-      error: message,
-    });
     writeLine(`Error: ${message}`);
-  } finally {
-    await recorder.flush?.({ timeoutMs: OBSERVABILITY_FLUSH_TIMEOUT_MS });
-    await recorder.close?.({ timeoutMs: OBSERVABILITY_FLUSH_TIMEOUT_MS });
   }
   return true;
 }
@@ -179,92 +128,11 @@ export function isCliEntrypoint(
   }
 }
 
-async function createEventRecorder(config: AppConfig): Promise<EventRecorder> {
-  const runId = randomUUID();
-  const sinks: EventSink[] = [
-    new LocalJsonlSink({
-      directory: path.resolve(
-        config.workingDirectory,
-        config.observability.localDir
-      ),
-      runId,
-    }),
-  ];
-  if (
-    config.observability.feedback.enabled &&
-    config.observability.feedback.url !== undefined
-  ) {
-    sinks.push(
-      new HttpFeedbackSink({
-        url: config.observability.feedback.url,
-        timeoutMs: config.observability.feedback.timeoutMs,
-        batchSize: config.observability.feedback.batchSize,
-      })
-    );
-  }
-
-  let hookConfig;
-  const hooksConfigPath =
-    config.hooksConfigPath ??
-    path.resolve(config.workingDirectory, DEFAULT_HOOKS_CONFIG_FILE);
-  try {
-    hookConfig = await loadHookConfig(hooksConfigPath);
-  } catch (error) {
-    if (config.hooksConfigPath !== undefined || !isFileMissing(error)) {
-      throw error;
-    }
-  }
-
-  const recorder = new EventRecorder({ runId, sinks });
-  if (hookConfig === undefined) return recorder;
-
-  const hookRuntime = new HookRuntime(hookConfig, {
-    onFailure: (event, hook, error) =>
-      recorder.emitHookFailure(event, hook, error),
-  });
-  recorder.setHookRuntime(hookRuntime);
-  return recorder;
-}
-
-function isFileMissing(error: unknown): boolean {
-  return (
-    typeof error === "object" &&
-    error !== null &&
-    "code" in error &&
-    error.code === "ENOENT"
-  );
-}
-
-async function runRepl(config: AppConfig): Promise<void> {
-  const rl = createInterface({ input, output });
-  let running = true;
-
-  rl.on("SIGINT", () => {
-    output.write("\n");
-    running = false;
-    rl.close();
-  });
-
-  while (running) {
-    let line: string;
-    try {
-      line = await rl.question("> ");
-    } catch {
-      break;
-    }
-    const shouldContinue = await handleUserInput(
-      line,
-      config,
-      createDefaultToolRegistry(config.workingDirectory)
-    );
-    if (!shouldContinue) break;
-  }
-
-  rl.close();
-}
-
-async function main(): Promise<void> {
-  const args = parseCliArgs(process.argv.slice(2));
+export async function runCli(
+  argv: string[],
+  tuiRunner: TuiRunner = runTui
+): Promise<void> {
+  const args = parseCliArgs(argv);
   const config = loadConfig({
     autoApprove: args.autoApprove,
     testCommand: args.testCommand,
@@ -280,7 +148,11 @@ async function main(): Promise<void> {
     return;
   }
 
-  await runRepl(config);
+  await tuiRunner(config, registry);
+}
+
+async function main(): Promise<void> {
+  await runCli(process.argv.slice(2));
 }
 
 function parsePositiveInteger(raw: string, flag: string): number {

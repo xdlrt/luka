@@ -8,3 +8,4 @@ evals/dashboard/
 evals/results/*.json
 evals/results/latest-summary.md
 evals/results/traces/
+.coding-agent/observability/
