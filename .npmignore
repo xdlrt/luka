@@ -1,0 +1,12 @@
+.env
+.env.*
+.git
+.github
+.coding-agent
+coverage
+dist/**/*.map
+docs/plan
+evals
+node_modules
+tests
+*.tsbuildinfo

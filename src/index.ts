@@ -1,7 +1,9 @@
+#!/usr/bin/env node
 import { createInterface } from "node:readline/promises";
 import { randomUUID } from "node:crypto";
+import { realpathSync } from "node:fs";
 import path from "node:path";
-import { pathToFileURL } from "node:url";
+import { fileURLToPath } from "node:url";
 import { stdin as input, stdout as output } from "node:process";
 import { runAgentLoop, type AgentResult } from "./agent-loop.js";
 import { loadConfig, type AppConfig } from "./config.js";
@@ -41,6 +43,7 @@ const defaultAgentRunner: AgentRunner = (userInput, config, tools, recorder) =>
     recorder
   );
 
+/** Parsed command-line options plus the user prompt after agent flags are removed. */
 export interface ParsedCliArgs {
   autoApprove: boolean;
   testCommand?: string;
@@ -50,6 +53,7 @@ export interface ParsedCliArgs {
   initialInput: string;
 }
 
+/** Split CLI flags from the user task so runtime options are never sent to the model. */
 export function parseCliArgs(argv: string[]): ParsedCliArgs {
   const promptParts: string[] = [];
   let autoApprove = false;
@@ -108,6 +112,7 @@ export function parseCliArgs(argv: string[]): ParsedCliArgs {
   };
 }
 
+/** Run one CLI/REPL input through the agent and print the resulting user-facing output. */
 export async function handleUserInput(
   rawInput: string,
   config: AppConfig,
@@ -159,6 +164,19 @@ export async function handleUserInput(
     await recorder.close?.({ timeoutMs: OBSERVABILITY_FLUSH_TIMEOUT_MS });
   }
   return true;
+}
+
+/** Return true when the module URL matches the process entrypoint, including npm bin symlinks. */
+export function isCliEntrypoint(
+  entrypoint: string | undefined,
+  moduleUrl: string
+): boolean {
+  if (entrypoint === undefined) return false;
+  try {
+    return realpathSync(entrypoint) === realpathSync(fileURLToPath(moduleUrl));
+  } catch {
+    return path.resolve(entrypoint) === path.resolve(fileURLToPath(moduleUrl));
+  }
 }
 
 async function createEventRecorder(config: AppConfig): Promise<EventRecorder> {
@@ -273,11 +291,7 @@ function parsePositiveInteger(raw: string, flag: string): number {
   return parsed;
 }
 
-const entrypoint = process.argv[1];
-if (
-  entrypoint !== undefined &&
-  import.meta.url === pathToFileURL(entrypoint).href
-) {
+if (isCliEntrypoint(process.argv[1], import.meta.url)) {
   main().catch((error: unknown) => {
     const message = error instanceof Error ? error.message : String(error);
     console.error(`Error: ${message}`);

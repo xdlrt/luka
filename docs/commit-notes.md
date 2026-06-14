@@ -1,5 +1,13 @@
 # Commit Notes
 
+## finish P5-W14 release polish
+
+- commit: finish P5-W14 release polish
+- time: 2026-06-14 16:40
+- Why: P1-P4 主链路已经具备可演示能力，但仓库还缺少开源发布前的入口完整性：npm bin 不能直接链接运行、README 仍偏阶段性说明、License/贡献模板缺失，Demo 和发布边界也没有形成可复现证据。
+- What: 将 P5-W14 从路线图推进到本地可打包状态：补 npm bin 和 files 白名单、CLI shebang、README 发布版说明、脚本化 asciinema demo、MIT License、CONTRIBUTING 与 GitHub Issue/PR 模板，并把 P5-W14 checklist 标记为完成。能力描述继续约束在当前真实边界内，不把基础 Harness 宣传成完整 OS 沙箱或成熟命令安全系统。
+- How: 先固定发布面而不改变 Agent Loop 和工具协议，再用 package 测试断言 bin/files 字段；README 以 Quick Start、配置、架构、安全边界、eval 证据和设计取舍组织，Demo 采用脚本化 cast 降低模型波动；验证路径为 CLI 输入测试、TypeScript build、全量测试和 npm pack 内容检查。
+
 ## initial repository baseline
 
 - commit: ba268fb
