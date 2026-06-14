@@ -207,3 +207,11 @@
 - Why: 原 P4 只把 eval 当作阶段性 runner、报告和门禁，缺少可观测事件、hook 扩展点和数据回流底座；如果没有统一 trace，后续评测结果只能说明通过率，难以复盘 Agent 在 LLM、工具、权限和验证链路上的真实行为。
 - What: 将 P4 重构为“可观测与持续评测”里程碑，先建设 lifecycle event、hook runtime、本地 JSONL 和 HTTP feedback，再让 eval runner 消费观测 trace 生成趋势与退化门禁；原发布写作阶段顺延为 P5，并在总计划中补 Observability & Hooks 和 Continuous Eval 模块。
 - How: 参考 Codex/TraeX hook 的生命周期思想，但把首版范围收敛到当前项目已经或即将拥有的 session、prompt、LLM、tool、permission、verification、stop 和 eval 事件；选择 JSON 配置避免引入 TOML 依赖，选择本地 JSONL 作为事实来源、HTTP feedback 作为可选回流。验证方式为 `git diff --check`，本次为文档计划调整，未运行代码测试。
+
+## sync plan completion status
+
+- commit: sync plan completion status
+- time: 2026-06-14 10:53
+- Why: P2 的部分实现已经完成并有对应提交证据，但计划文档仍保持未完成状态，容易让后续执行者重复规划或误判项目进度；同时需要把“完成计划任务必须更新 checklist”沉淀成长期规则，避免路线图和真实进展再次脱节。
+- What: 将 P2-W4-T1 到 P2-W5-T1 标记为已完成，并在 AGENTS 的文档更新范式中新增要求：完成 `docs/plan/` 或主执行计划里的明确任务后，必须同次把对应 checklist 从 `[ ]` 改为 `[x]`，且只能标记真实完成的任务。
+- How: 只同步计划状态和协作规则，不改变代码行为；完成项对应前序提交中已有分类、权限确认、Agent Loop 接入、auto-approve 和危险命令规则的实现与测试证据。验证方式为 `git diff --check`，本次为文档状态与规则更新，未运行代码测试。

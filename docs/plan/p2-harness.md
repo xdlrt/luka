@@ -3,7 +3,7 @@
 > **里程碑**：Agent 具备完整 Harness（权限门控 + 安全规则 + 沙箱 + 自验证 + 重试）和 eval 基线数据。
 
 ## 任务清单
-- [ ] **P2-W4-T1**: 实现工具分类系统
+- [x] **P2-W4-T1**: 实现工具分类系统
 
   **说明**：创建 `src/permissions/categories.ts`。将工具分为三类：`read`（read_file）、`write`（write_file、edit_file）、`command`（run_command）。为 ToolDefinition 添加 `category` 字段。
 
@@ -17,7 +17,7 @@
 
 ---
 
-- [ ] **P2-W4-T2**: 实现 write_file 和 run_command 的写前确认机制
+- [x] **P2-W4-T2**: 实现 write_file 和 run_command 的写前确认机制
 
   **说明**：创建 `src/permissions/index.ts`。在执行 write 或 command 类工具之前，打印将要执行的操作（文件路径/命令内容），要求用户在终端输入 `y` 确认或 `n` 拒绝。
 
@@ -32,7 +32,7 @@
 
 ---
 
-- [ ] **P2-W4-T3**: 将权限确认接入 Agent Loop
+- [x] **P2-W4-T3**: 将权限确认接入 Agent Loop
 
   **说明**：修改 `src/agent-loop.ts`，在工具执行前插入权限检查。Agent Loop 不直接了解权限细节，通过一个 `permissionCheck(tool, input)` 函数完成。
 
@@ -47,7 +47,7 @@
 
 ---
 
-- [ ] **P2-W4-T4**: 增加命令行 Flag：`--auto-approve` 模式
+- [x] **P2-W4-T4**: 增加命令行 Flag：`--auto-approve` 模式
 
   **说明**：在 CLI 中添加 `--auto-approve` / `-y` 参数。此模式下写操作和命令执行自动通过，不需要交互确认。用于自动化测试和集成测试场景。
 
@@ -60,7 +60,7 @@
 
 ---
 
-- [ ] **P2-W5-T1**: 实现危险命令拦截规则引擎
+- [x] **P2-W5-T1**: 实现危险命令拦截规则引擎
 
   **说明**：创建 `src/permissions/rules.ts`。维护一个危险命令规则列表，在执行 `run_command` 前检查命令是否为已知危险模式。用正则表达式匹配，支持黑名单和参数拦截。
 
