@@ -4,7 +4,7 @@
 
 ## 任务清单
 
-- [ ] **P4-W12-T1**: 定义可观测事件模型
+- [x] **P4-W12-T1**: 定义可观测事件模型
 
   **说明**：先建立统一的 lifecycle event schema，让 Agent Loop、工具、权限、自验证和 eval 都围绕同一条事件流沉淀证据。持续 eval 后续只消费这些事件，不再各自拼接临时指标。
 
@@ -45,7 +45,7 @@
 
 ---
 
-- [ ] **P4-W12-T2**: 实现 hook runtime
+- [x] **P4-W12-T2**: 实现 hook runtime
 
   **说明**：参考 Codex/TraeX lifecycle hooks，但只实现当前项目需要的最小核心链路。Hook 是扩展点，不是 Agent 主流程的一部分；失败、超时和回流异常必须被记录，但默认不能中断用户任务。
 
@@ -74,7 +74,7 @@
 
 ---
 
-- [ ] **P4-W12-T3**: 实现事件 recorder 与数据 sink
+- [x] **P4-W12-T3**: 实现事件 recorder 与数据 sink
 
   **说明**：新增 `EventRecorder` 作为 Agent 内部唯一观测入口。默认写本地 JSONL，额外支持 HTTP feedback sink。HTTP 回流用于后续接入分析平台；本地 JSONL 是首版事实来源。
 
@@ -104,7 +104,7 @@
 
 ---
 
-- [ ] **P4-W12-T4**: 接入 Agent 核心生命周期
+- [x] **P4-W12-T4**: 接入 Agent 核心生命周期
 
   **说明**：把 recorder 接入真实执行链路。观测只记录“发生了什么”和必要摘要，不改变工具协议、LLM 消息协议或权限决策结果。
 

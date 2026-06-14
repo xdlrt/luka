@@ -16,6 +16,7 @@ import {
   type AgentRunner,
 } from "../src/evals/runner.js";
 import type { EvalTask } from "../src/evals/types.js";
+import type { EventRecorderLike } from "../src/observability/recorder.js";
 
 describe("eval runner", () => {
   let tempDir: string;
@@ -142,6 +143,58 @@ describe("eval runner", () => {
     expect(result.results.map((item) => item.task_id)).toEqual(["02-other"]);
     expect(runner).toHaveBeenCalledTimes(1);
   });
+
+  it("records eval task start and end events", async () => {
+    const recorder = createRecorder();
+    const runner: AgentRunner = vi.fn(async (_input, config) => {
+      await writeFile(
+        path.join(config.workingDirectory, "notes.txt"),
+        "done\n",
+        "utf8"
+      );
+      return {
+        finalMessage: "done",
+        turnsUsed: 1,
+        toolsCalled: ["write_file"],
+        success: true,
+        totalTokens: 2,
+      };
+    });
+
+    await runEvalTask(createTask("01-create-file"), runner, {
+      createRecorder: () => recorder,
+    });
+
+    expect(recorder.emit).toHaveBeenCalledWith(
+      "SessionStart",
+      expect.objectContaining({
+        mode: "eval",
+        taskId: "01-create-file",
+      })
+    );
+    expect(recorder.emit).toHaveBeenCalledWith(
+      "EvalTaskStart",
+      expect.objectContaining({
+        taskId: "01-create-file",
+        difficulty: "easy",
+      })
+    );
+    expect(recorder.emit).toHaveBeenCalledWith(
+      "EvalTaskEnd",
+      expect.objectContaining({
+        taskId: "01-create-file",
+        passed: true,
+      })
+    );
+    expect(recorder.emit).toHaveBeenCalledWith(
+      "SessionEnd",
+      expect.objectContaining({
+        mode: "eval",
+        taskId: "01-create-file",
+        success: true,
+      })
+    );
+  });
 });
 
 function createTask(id: string): EvalTask {
@@ -175,4 +228,20 @@ async function expectNoEvalTempDir(taskId: string): Promise<void> {
   expect(
     entries.some((entry) => entry.startsWith(`coding-agent-eval-${taskId}-`))
   ).toBe(false);
+}
+
+function createRecorder(): EventRecorderLike {
+  return {
+    runId: "run-test",
+    emit: vi.fn((type, payload = {}) => ({
+      schemaVersion: 1,
+      id: `${type}-id`,
+      runId: "run-test",
+      timestamp: "2026-06-14T01:02:03.000Z",
+      type,
+      payload,
+    })),
+    flush: vi.fn(async () => {}),
+    close: vi.fn(async () => {}),
+  };
 }

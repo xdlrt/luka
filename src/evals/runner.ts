@@ -11,16 +11,36 @@ import path from "node:path";
 import { pathToFileURL } from "node:url";
 import { runAgentLoop, type AgentResult } from "../agent-loop.js";
 import { loadConfig, type AppConfig } from "../config.js";
+import {
+  EventRecorder,
+  type EventRecorderLike,
+} from "../observability/recorder.js";
+import { LocalJsonlSink } from "../observability/sinks.js";
 import { createDefaultToolRegistry } from "../tools/index.js";
 import { runTests } from "../verification/test-runner.js";
 import type { EvalRunResult, EvalTask, EvalTaskResult } from "./types.js";
 import { parseEvalTask } from "./types.js";
 
+const OBSERVABILITY_FLUSH_TIMEOUT_MS = 500;
+
 export type AgentRunner = (
   userInput: string,
   config: AppConfig,
-  tools: ReturnType<typeof createDefaultToolRegistry>
+  tools: ReturnType<typeof createDefaultToolRegistry>,
+  recorder?: EventRecorderLike
 ) => Promise<AgentResult>;
+
+const defaultAgentRunner: AgentRunner = (userInput, config, tools, recorder) =>
+  runAgentLoop(
+    userInput,
+    config,
+    tools,
+    undefined,
+    undefined,
+    undefined,
+    undefined,
+    recorder
+  );
 
 export interface EvalRunnerOptions {
   taskId?: string;
@@ -28,6 +48,7 @@ export interface EvalRunnerOptions {
   tasksDir?: string;
   resultsDir?: string;
   runner?: AgentRunner;
+  createRecorder?: (config: AppConfig) => EventRecorderLike;
 }
 
 const DEFAULT_TASKS_DIR = path.resolve(process.cwd(), "evals/tasks");
@@ -43,9 +64,14 @@ export async function runEvalSuite(
   const startedAt = new Date();
   const runId = formatRunId(startedAt);
   const results: EvalTaskResult[] = [];
+  const runner = options.runner ?? defaultAgentRunner;
 
   for (const task of selectedTasks) {
-    results.push(await runEvalTask(task, options.runner ?? runAgentLoop));
+    results.push(
+      await runEvalTask(task, runner, {
+        createRecorder: options.createRecorder,
+      })
+    );
   }
 
   const runResult: EvalRunResult = {
@@ -66,7 +92,8 @@ export async function runEvalSuite(
 
 export async function runEvalTask(
   task: EvalTask,
-  runner: AgentRunner = runAgentLoop
+  runner: AgentRunner = defaultAgentRunner,
+  options: { createRecorder?: (config: AppConfig) => EventRecorderLike } = {}
 ): Promise<EvalTaskResult> {
   const tempDir = await mkdtemp(
     path.join(os.tmpdir(), `coding-agent-eval-${task.id}-`)
@@ -77,9 +104,32 @@ export async function runEvalTask(
     await writeSetupFiles(tempDir, task);
     const config = createEvalConfig(task, tempDir, runner);
     const registry = createDefaultToolRegistry(tempDir);
-    const result = await runner(task.prompt, config, registry);
+    const recorder = (options.createRecorder ?? createEvalRecorder)(config);
+    recorder.emit("SessionStart", {
+      mode: "eval",
+      taskId: task.id,
+      workingDirectory: config.workingDirectory,
+      model: config.model,
+    });
+    recorder.emit("EvalTaskStart", {
+      taskId: task.id,
+      difficulty: task.difficulty,
+    });
+    const result = await runner(task.prompt, config, registry, recorder);
     const failureReason = await evaluateExpectations(tempDir, task, result);
     const retries = Math.max(0, result.toolsCalled.filter(isEditTool).length - 1);
+    recorder.emit("EvalTaskEnd", {
+      taskId: task.id,
+      passed: failureReason === undefined,
+      failureReason,
+    });
+    recorder.emit("SessionEnd", {
+      mode: "eval",
+      taskId: task.id,
+      success: failureReason === undefined,
+    });
+    await recorder.flush?.({ timeoutMs: OBSERVABILITY_FLUSH_TIMEOUT_MS });
+    await recorder.close?.({ timeoutMs: OBSERVABILITY_FLUSH_TIMEOUT_MS });
 
     return {
       task_id: task.id,
@@ -104,12 +154,28 @@ export async function runEvalTask(
   }
 }
 
+function createEvalRecorder(config: AppConfig): EventRecorderLike {
+  const recorder = new EventRecorder();
+  return new EventRecorder({
+    runId: recorder.runId,
+    sinks: [
+      new LocalJsonlSink({
+        directory: path.resolve(
+          config.workingDirectory,
+          config.observability.localDir
+        ),
+        runId: recorder.runId,
+      }),
+    ],
+  });
+}
+
 function createEvalConfig(
   task: EvalTask,
   workingDirectory: string,
   runner: AgentRunner
 ): AppConfig {
-  if (runner === runAgentLoop) {
+  if (runner === defaultAgentRunner) {
     return loadConfig({
       workingDirectory,
       autoApprove: true,
@@ -127,6 +193,14 @@ function createEvalConfig(
     testCommand: task.testCommand,
     maxRetries: 3,
     verbose: false,
+    observability: {
+      localDir: ".coding-agent/observability",
+      feedback: {
+        enabled: false,
+        timeoutMs: 3000,
+        batchSize: 20,
+      },
+    },
   };
 }
 

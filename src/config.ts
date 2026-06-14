@@ -10,11 +10,26 @@ export interface AppConfig {
   testCommand?: string;
   maxRetries: number;
   verbose: boolean;
+  hooksConfigPath?: string;
+  observability: ObservabilityConfig;
+}
+
+export interface ObservabilityConfig {
+  localDir: string;
+  feedback: {
+    enabled: boolean;
+    url?: string;
+    timeoutMs: number;
+    batchSize: number;
+  };
 }
 
 const DEFAULT_BASE_URL = "https://ark.cn-beijing.volces.com/api/v3";
 const DEFAULT_MAX_TURNS = 20;
 const DEFAULT_MAX_RETRIES = 3;
+const DEFAULT_OBSERVABILITY_DIR = ".coding-agent/observability";
+const DEFAULT_FEEDBACK_TIMEOUT_MS = 3000;
+const DEFAULT_FEEDBACK_BATCH_SIZE = 20;
 
 function resolve(
   overrideValue: string | undefined,
@@ -63,6 +78,14 @@ export function loadConfig(overrides: Partial<AppConfig> = {}): AppConfig {
   const autoApprove = overrides.autoApprove ?? false;
   const testCommand = resolve(overrides.testCommand, process.env.TEST_COMMAND);
   const verbose = overrides.verbose ?? parseBoolean(process.env.VERBOSE);
+  const hooksConfigPath = resolve(
+    overrides.hooksConfigPath,
+    process.env.HOOKS_CONFIG
+  );
+  const observability =
+    overrides.observability !== undefined
+      ? validateObservabilityConfig(overrides.observability)
+      : loadObservabilityConfigFromEnv();
 
   return {
     apiKey,
@@ -74,6 +97,57 @@ export function loadConfig(overrides: Partial<AppConfig> = {}): AppConfig {
     testCommand,
     maxRetries,
     verbose,
+    hooksConfigPath,
+    observability,
+  };
+}
+
+function loadObservabilityConfigFromEnv(): ObservabilityConfig {
+  const feedbackUrl = resolve(undefined, process.env.OBSERVABILITY_FEEDBACK_URL);
+  return {
+    localDir:
+      resolve(undefined, process.env.OBSERVABILITY_DIR) ??
+      DEFAULT_OBSERVABILITY_DIR,
+    feedback: {
+      enabled: feedbackUrl !== undefined,
+      url: feedbackUrl,
+      timeoutMs:
+        parseOptionalPositiveInteger(
+          process.env.OBSERVABILITY_FEEDBACK_TIMEOUT_MS,
+          "OBSERVABILITY_FEEDBACK_TIMEOUT_MS"
+        ) ?? DEFAULT_FEEDBACK_TIMEOUT_MS,
+      batchSize:
+        parseOptionalPositiveInteger(
+          process.env.OBSERVABILITY_FEEDBACK_BATCH_SIZE,
+          "OBSERVABILITY_FEEDBACK_BATCH_SIZE"
+        ) ?? DEFAULT_FEEDBACK_BATCH_SIZE,
+    },
+  };
+}
+
+function validateObservabilityConfig(
+  config: ObservabilityConfig
+): ObservabilityConfig {
+  if (config.localDir.trim() === "") {
+    throw new Error("Invalid observability.localDir: expected a non-empty string");
+  }
+  if (config.feedback.url !== undefined && config.feedback.url.trim() === "") {
+    throw new Error("Invalid observability.feedback.url: expected a non-empty string");
+  }
+  return {
+    localDir: config.localDir,
+    feedback: {
+      enabled: config.feedback.enabled,
+      url: config.feedback.url,
+      timeoutMs: parsePositiveInteger(
+        config.feedback.timeoutMs,
+        "observability.feedback.timeoutMs"
+      ),
+      batchSize: parsePositiveInteger(
+        config.feedback.batchSize,
+        "observability.feedback.batchSize"
+      ),
+    },
   };
 }
 

@@ -1,5 +1,7 @@
 import type { AppConfig } from "./config.js";
 import { createLogger, type Logger } from "./logger.js";
+import type { EventRecorderLike } from "./observability/recorder.js";
+import { summarizeForEvent } from "./observability/events.js";
 import {
   checkToolPermission,
   type PermissionDecision,
@@ -61,6 +63,7 @@ export interface HarnessConfig {
   permissionCheck?: PermissionChecker;
   testRunner?: TestRunner;
   logger?: Logger;
+  recorder?: EventRecorderLike;
 }
 
 export class Harness implements HarnessLike {
@@ -69,11 +72,13 @@ export class Harness implements HarnessLike {
   private readonly permissionCheck: PermissionChecker;
   private readonly testRunner: TestRunner;
   private readonly logger: Logger;
+  private readonly recorder: EventRecorderLike | undefined;
 
   constructor(private readonly config: HarnessConfig) {
     this.permissionCheck = config.permissionCheck ?? checkToolPermission;
     this.testRunner = config.testRunner ?? runTests;
     this.logger = config.logger ?? createLogger({ verbose: false });
+    this.recorder = config.recorder;
   }
 
   static fromAppConfig(
@@ -106,14 +111,34 @@ export class Harness implements HarnessLike {
       }
 
       this.logger.info(`[Tool: ${toolName}] ${formatToolInput(input)}`);
+      const startedAt = Date.now();
+      this.recorder?.emit("PreToolUse", {
+        toolName,
+        category: tool.category,
+        input: summarizeValue(input),
+      });
       const decision = await this.preExecute(tool, input);
       if (!decision.proceed) {
+        this.recorder?.emit("PostToolUse", {
+          toolName,
+          category: tool.category,
+          elapsedMs: Date.now() - startedAt,
+          blocked: true,
+          result: decision.reason,
+        });
         return { content: decision.reason };
       }
 
       const result = await tools.execute(toolName, input);
       const content = formatToolResult(result);
       const action = await this.postExecute(toolName, result, modelAction);
+      this.recorder?.emit("PostToolUse", {
+        toolName,
+        category: tool.category,
+        elapsedMs: Date.now() - startedAt,
+        error: result.error,
+        result: summarizeValue(content),
+      });
       return {
         content,
         verificationMessage: action.verificationMessage,
@@ -144,6 +169,12 @@ export class Harness implements HarnessLike {
     const permission = await this.permissionCheck(tool, input, {
       autoApprove: this.config.autoApprove,
     });
+    this.recorder?.emit("PermissionRequest", {
+      toolName: tool.name,
+      category: tool.category,
+      approved: permission.approved,
+      reason: permission.approved ? undefined : permission.reason,
+    });
     if (!permission.approved) {
       return {
         proceed: false,
@@ -169,6 +200,10 @@ export class Harness implements HarnessLike {
     }
 
     const verificationStartedAt = Date.now();
+    this.recorder?.emit("VerificationStart", {
+      toolName,
+      testCommand: this.config.testCommand,
+    });
     const testResult = await this.testRunner(
       this.config.testCommand,
       this.config.workingDirectory
@@ -188,6 +223,15 @@ export class Harness implements HarnessLike {
     this.logger.debug(
       `[VERIFY] completed in ${Date.now() - verificationStartedAt}ms`
     );
+    this.recorder?.emit("VerificationEnd", {
+      toolName,
+      testCommand: this.config.testCommand,
+      passed: testResult.passed,
+      exitCode: testResult.exitCode,
+      durationMs: testResult.durationMs,
+      elapsedMs: Date.now() - verificationStartedAt,
+      summary,
+    });
     if (testResult.passed) {
       this.logger.info("[VERIFY] Tests passed");
     } else {
@@ -249,4 +293,8 @@ function formatToolInput(input: Record<string, unknown>): string {
 function summarizeFailure(summary: string): string {
   const firstLine = summary.split("\n")[0];
   return firstLine.trim() === "" ? "failed" : firstLine;
+}
+
+function summarizeValue(value: unknown): string {
+  return summarizeForEvent(value);
 }

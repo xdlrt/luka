@@ -1,6 +1,7 @@
 import { describe, expect, it, vi } from "vitest";
 import { runAgentLoop } from "../src/agent-loop.js";
 import { Harness } from "../src/harness.js";
+import type { EventRecorderLike } from "../src/observability/recorder.js";
 import { ToolRegistry, type ToolDefinition } from "../src/tools/index.js";
 import type { AppConfig } from "../src/config.js";
 import type { TestResult } from "../src/verification/test-runner.js";
@@ -23,6 +24,20 @@ const silentLogger = {
   warn: vi.fn(),
   error: vi.fn(),
 };
+
+function createRecorder(): EventRecorderLike {
+  return {
+    runId: "run-test",
+    emit: vi.fn((type, payload = {}) => ({
+      schemaVersion: 1,
+      id: `${type}-id`,
+      runId: "run-test",
+      timestamp: "2026-06-14T01:02:03.000Z",
+      type,
+      payload,
+    })),
+  };
+}
 
 function createTool(name: string): ToolDefinition {
   return {
@@ -119,5 +134,48 @@ describe("runAgentLoop post-edit verification", () => {
     await runAgentLoop("read", baseConfig, tools, client, harness, silentLogger);
 
     expect(testRunner).not.toHaveBeenCalled();
+  });
+
+  it("records verification start and end events", async () => {
+    const { client } = createClient([
+      toolCallResponse([
+        { id: "c1", name: "edit_file", args: { path: "a.ts" } },
+      ]),
+      textResponse("done"),
+    ]);
+    const tools = new ToolRegistry();
+    tools.register(createTool("edit_file"));
+    const testRunner = vi.fn(async () => passingResult());
+    const recorder = createRecorder();
+    const harness = Harness.fromAppConfig(baseConfig, {
+      testRunner,
+      logger: silentLogger,
+      recorder,
+    });
+
+    await runAgentLoop(
+      "fix",
+      baseConfig,
+      tools,
+      client,
+      harness,
+      silentLogger
+    );
+
+    expect(recorder.emit).toHaveBeenCalledWith(
+      "VerificationStart",
+      expect.objectContaining({
+        toolName: "edit_file",
+        testCommand: "npm test",
+      })
+    );
+    expect(recorder.emit).toHaveBeenCalledWith(
+      "VerificationEnd",
+      expect.objectContaining({
+        toolName: "edit_file",
+        passed: true,
+        exitCode: 0,
+      })
+    );
   });
 });

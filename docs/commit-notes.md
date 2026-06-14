@@ -327,3 +327,11 @@
 - Why: P3 的功能已经覆盖多文件检索、上下文压缩、context-budget 读取和 TodoWrite 规划，但没有真实全量 eval 结果就无法判断这些能力在 10 个任务上的实际表现，也无法和 P2 的 5 任务基线做可复盘对比。
 - What: 运行 `npm run eval -- --all` 得到 P3 结果 `9/10`，并保存为 `evals/results/2026-06-14-p3.json`；README 新增 P2/P3 对比表和 P3 任务明细，记录平均轮数从 3.8 到 4.6、平均重试从 0.0 到 0.4，并说明 `09-add-tests-for-module` 失败于期望文本缺失。P3-W11-T5 和总执行计划中的 P3 里程碑标记完成。
 - How: 保留 runner 原始输出文件 `2026-06-14T07-17-18-855Z.json`，同时复制一份稳定命名的 P3 结果文件便于 README 引用；对比指标只使用现有 eval JSON 字段手工计算，不新增 runner schema 或持续评测逻辑。验证方式为 `npm run build`、全量 `npm test`、真实 `npm run eval -- --all` 和最终 `git diff --check`。
+
+## add p4 observability hooks
+
+- commit: add p4 observability hooks
+- time: 2026-06-14 15:41
+- Why: P3 已经有多文件 eval 和规划状态，但运行过程仍只能从最终结果倒推，缺少统一事件流来复盘 LLM、工具、权限、验证和 eval 的真实路径。P4-W12 先建设最小可观测底座，把事件模型、hook 扩展点和 JSONL 事实来源固定下来，为 W13 的 trace 消费、趋势报告和退化门禁打基础。
+- What: 新增 `AgentEvent` schema、脱敏摘要、`EventRecorder`、本地 JSONL sink、HTTP feedback sink 和 command/http hook runtime；CLI 支持 `--hooks-config`，配置层支持观测目录与 feedback 环境变量。Agent Loop emit LLM request/response 和 Stop，Harness emit 工具前后、权限和编辑后验证，eval task emit 开始/结束；P4-W12-T1 到 T4 checklist 标记完成。协议边界不变：工具 schema 仍不暴露运行时字段，工具异常仍回传模型，观测和 hook 默认不改变 Agent 成败。
+- How: recorder 被设计成唯一观测入口，但对主链路只暴露同步 `emit()`：调用方只创建、脱敏、校验并入队事件，JSONL、HTTP feedback 和 hook 由后台 drain 顺序处理，请求结束只做 500ms 有界 flush。sink/hook 失败只写 stderr 或 HookFailure 事件，避免把观测链路变成执行链路的新故障源；payload 统一经过敏感 key 与凭证样式脱敏，并限制摘要长度，防止把密钥、完整环境变量或大段命令输出写进 trace。测试覆盖事件校验/脱敏、JSONL/HTTP sink、hook 顺序/失败/非递归、配置优先级、CLI 参数、Agent Loop/Harness/eval 生命周期事件和非阻塞 flush 超时。验证方式为新增 observability 测试、配置/CLI/Agent/Harness/eval 定向测试、`npm run build` 和全量 `npm test`。

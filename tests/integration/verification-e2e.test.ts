@@ -36,6 +36,14 @@ const baseConfig: AppConfig = {
   testCommand: "node check.mjs",
   maxRetries: 3,
   verbose: false,
+  observability: {
+    localDir: ".coding-agent/observability",
+    feedback: {
+      enabled: false,
+      timeoutMs: 3000,
+      batchSize: 20,
+    },
+  },
 };
 
 function toolCallResponse(

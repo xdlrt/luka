@@ -13,6 +13,14 @@ const baseConfig: AppConfig = {
   autoApprove: false,
   maxRetries: 3,
   verbose: false,
+  observability: {
+    localDir: ".coding-agent/observability",
+    feedback: {
+      enabled: false,
+      timeoutMs: 3000,
+      batchSize: 20,
+    },
+  },
 };
 
 function jsonResponse(

@@ -9,6 +9,7 @@ import { SYSTEM_PROMPT } from "./context/system-prompt.js";
 import { Harness, type HarnessLike } from "./harness.js";
 import { createLogger, type Logger } from "./logger.js";
 import { LLMClient, parseResponse } from "./llm-client.js";
+import type { EventRecorderLike } from "./observability/recorder.js";
 import type { TodoManager } from "./planning/todo.js";
 import type { ToolRegistry } from "./tools/index.js";
 import type { Message } from "./types.js";
@@ -31,10 +32,11 @@ export async function runAgentLoop(
   logger: Logger = createLogger({ verbose: config.verbose }),
   compressor: HistoryCompressor = new ContextCompressor(
     client as ContextCompressorClient
-  )
+  ),
+  recorder?: EventRecorderLike
 ): Promise<AgentResult> {
   const activeHarness =
-    harness ?? Harness.fromAppConfig(config, { logger });
+    harness ?? Harness.fromAppConfig(config, { logger, recorder });
   const todoManager = tools.getTodoManager();
   const history = new MessageHistory([
     { role: "system", content: SYSTEM_PROMPT },
@@ -64,12 +66,20 @@ export async function runAgentLoop(
     logger.debug(
       `[CONTEXT] messages=${messages.length}, approxTokens=${history.getApproxTokenCount()}`
     );
+    recorder?.emit("LLMRequest", {
+      turn,
+      model: config.model,
+      messageCount: messages.length,
+      toolDefinitionCount: toolDefinitions.length,
+      approxTokens: history.getApproxTokenCount(),
+    });
     const response = await client.sendMessage(messages, {
       tools: toolDefinitions,
     });
+    const llmElapsedMs = Date.now() - turnStartedAt;
     totalTokens += response.usage.total_tokens;
     logger.debug(
-      `[TURN ${turn}] LLM response received in ${Date.now() - turnStartedAt}ms`
+      `[TURN ${turn}] LLM response received in ${llmElapsedMs}ms`
     );
     const assistantMessage = response.choices[0]?.message;
     if (assistantMessage !== undefined) {
@@ -83,9 +93,23 @@ export async function runAgentLoop(
       lastText
     );
     logger.debug(`[TURN ${turn}] tool calls=${parsed.toolCalls.length}`);
+    recorder?.emit("LLMResponse", {
+      turn,
+      model: response.model,
+      toolCallCount: parsed.toolCalls.length,
+      finishReason: parsed.finishReason,
+      elapsedMs: llmElapsedMs,
+      usage: response.usage,
+    });
 
     if (parsed.toolCalls.length === 0) {
       logger.info(`[TURN ${turn}] no tool calls; finishing`);
+      recorder?.emit("Stop", {
+        success: true,
+        turns: turn,
+        finalState: "no_tool_calls",
+        totalTokens,
+      });
       return {
         finalMessage: lastText,
         turnsUsed: turn,
@@ -120,6 +144,12 @@ export async function runAgentLoop(
   }
 
   logger.warn(`[Agent] Reached maxTurns=${config.maxTurns}; stopping`);
+  recorder?.emit("Stop", {
+    success: false,
+    turns: config.maxTurns,
+    finalState: "max_turns",
+    totalTokens,
+  });
   return {
     finalMessage: lastText,
     turnsUsed: config.maxTurns,

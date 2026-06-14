@@ -16,6 +16,14 @@ export const baseConfig: AppConfig = {
   autoApprove: false,
   maxRetries: 3,
   verbose: false,
+  observability: {
+    localDir: ".coding-agent/observability",
+    feedback: {
+      enabled: false,
+      timeoutMs: 3000,
+      batchSize: 20,
+    },
+  },
 };
 
 export function textResponse(content: string): ChatCompletionResponse {

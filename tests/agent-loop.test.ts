@@ -3,6 +3,7 @@ import { runAgentLoop } from "../src/agent-loop.js";
 import { MessageHistory } from "../src/context/message-history.js";
 import type { HistoryCompressor } from "../src/context/compressor.js";
 import type { HarnessLike } from "../src/harness.js";
+import type { EventRecorderLike } from "../src/observability/recorder.js";
 import { TodoManager, type TodoItem } from "../src/planning/todo.js";
 import { ToolRegistry, type ToolDefinition } from "../src/tools/index.js";
 import {
@@ -55,6 +56,20 @@ function createCompressor(
         new MessageHistory([{ role: "assistant", content: "Context summary:\nok" }])
       );
     }),
+  };
+}
+
+function createRecorder(): EventRecorderLike {
+  return {
+    runId: "run-test",
+    emit: vi.fn((type, payload = {}) => ({
+      schemaVersion: 1,
+      id: `${type}-id`,
+      runId: "run-test",
+      timestamp: "2026-06-14T01:02:03.000Z",
+      type,
+      payload,
+    })),
   };
 }
 
@@ -456,6 +471,63 @@ describe("runAgentLoop", () => {
       {},
       tools,
       "tools: echo"
+    );
+  });
+
+  it("records LLM lifecycle and successful stop events", async () => {
+    const { client } = createClient([textResponse("done")]);
+    const tools = new ToolRegistry();
+    const harness = createHarness();
+    const recorder = createRecorder();
+
+    await runAgentLoop(
+      "hi",
+      baseConfig,
+      tools,
+      client,
+      harness,
+      undefined,
+      undefined,
+      recorder
+    );
+
+    expect(recorder.emit).toHaveBeenCalledWith(
+      "LLMRequest",
+      expect.objectContaining({ turn: 1, model: "doubao-test" })
+    );
+    expect(recorder.emit).toHaveBeenCalledWith(
+      "LLMResponse",
+      expect.objectContaining({ turn: 1, toolCallCount: 0 })
+    );
+    expect(recorder.emit).toHaveBeenCalledWith(
+      "Stop",
+      expect.objectContaining({ success: true, finalState: "no_tool_calls" })
+    );
+  });
+
+  it("records max-turn stop events", async () => {
+    const { client } = createClient([
+      toolCallResponse([{ id: "c1", name: "echo", args: {} }]),
+    ]);
+    const tools = new ToolRegistry();
+    tools.register(createTool("echo", "out"));
+    const harness = createHarness();
+    const recorder = createRecorder();
+
+    await runAgentLoop(
+      "loop",
+      { ...baseConfig, maxTurns: 1 },
+      tools,
+      client,
+      harness,
+      undefined,
+      undefined,
+      recorder
+    );
+
+    expect(recorder.emit).toHaveBeenCalledWith(
+      "Stop",
+      expect.objectContaining({ success: false, finalState: "max_turns" })
     );
   });
 });

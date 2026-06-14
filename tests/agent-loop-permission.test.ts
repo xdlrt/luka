@@ -1,6 +1,7 @@
 import { describe, expect, it, vi } from "vitest";
 import { runAgentLoop } from "../src/agent-loop.js";
 import { Harness } from "../src/harness.js";
+import type { EventRecorderLike } from "../src/observability/recorder.js";
 import { ToolRegistry, type ToolDefinition } from "../src/tools/index.js";
 import {
   baseConfig,
@@ -29,6 +30,20 @@ const silentLogger = {
   warn: vi.fn(),
   error: vi.fn(),
 };
+
+function createRecorder(): EventRecorderLike {
+  return {
+    runId: "run-test",
+    emit: vi.fn((type, payload = {}) => ({
+      schemaVersion: 1,
+      id: `${type}-id`,
+      runId: "run-test",
+      timestamp: "2026-06-14T01:02:03.000Z",
+      type,
+      payload,
+    })),
+  };
+}
 
 describe("runAgentLoop permission integration", () => {
   it("checks permission before executing an approved read tool", async () => {
@@ -477,6 +492,61 @@ describe("runAgentLoop permission integration", () => {
           content: "notes",
         },
       ]
+    );
+  });
+
+  it("records permission decisions for approved and rejected tools", async () => {
+    const { client } = createClient([
+      toolCallResponse([
+        { id: "call-read", name: "read_file", args: { path: "notes.txt" } },
+        {
+          id: "call-write",
+          name: "write_file",
+          args: { path: "notes.txt", content: "new" },
+        },
+      ]),
+      textResponse("done"),
+    ]);
+    const tools = new ToolRegistry();
+    tools.register(createTool("read_file", "read", "old"));
+    tools.register(createTool("write_file", "write", "new"));
+    const permissionCheck = vi.fn(async (tool: ToolDefinition) =>
+      tool.name === "read_file"
+        ? { approved: true }
+        : { approved: false, reason: "Cancelled by user" }
+    );
+    const recorder = createRecorder();
+    const harness = Harness.fromAppConfig(baseConfig, {
+      permissionCheck,
+      logger: silentLogger,
+      recorder,
+    });
+
+    await runAgentLoop(
+      "mix",
+      baseConfig,
+      tools,
+      client,
+      harness,
+      silentLogger
+    );
+
+    expect(recorder.emit).toHaveBeenCalledWith(
+      "PermissionRequest",
+      expect.objectContaining({
+        toolName: "read_file",
+        category: "read",
+        approved: true,
+      })
+    );
+    expect(recorder.emit).toHaveBeenCalledWith(
+      "PermissionRequest",
+      expect.objectContaining({
+        toolName: "write_file",
+        category: "write",
+        approved: false,
+        reason: "Cancelled by user",
+      })
     );
   });
 });

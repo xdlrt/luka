@@ -13,6 +13,14 @@ const baseConfig: AppConfig = {
   autoApprove: false,
   maxRetries: 3,
   verbose: false,
+  observability: {
+    localDir: ".coding-agent/observability",
+    feedback: {
+      enabled: false,
+      timeoutMs: 3000,
+      batchSize: 20,
+    },
+  },
 };
 
 describe("parseCliArgs", () => {
@@ -22,6 +30,7 @@ describe("parseCliArgs", () => {
       testCommand: undefined,
       maxRetries: undefined,
       verbose: false,
+      hooksConfigPath: undefined,
       initialInput: "edit file",
     });
   });
@@ -32,6 +41,7 @@ describe("parseCliArgs", () => {
       testCommand: undefined,
       maxRetries: undefined,
       verbose: false,
+      hooksConfigPath: undefined,
       initialInput: "run tests",
     });
   });
@@ -42,6 +52,7 @@ describe("parseCliArgs", () => {
       testCommand: undefined,
       maxRetries: undefined,
       verbose: false,
+      hooksConfigPath: undefined,
       initialInput: "hello agent",
     });
   });
@@ -52,6 +63,7 @@ describe("parseCliArgs", () => {
       testCommand: undefined,
       maxRetries: undefined,
       verbose: false,
+      hooksConfigPath: undefined,
       initialInput: "",
     });
   });
@@ -62,6 +74,7 @@ describe("parseCliArgs", () => {
       testCommand: "npm test",
       maxRetries: undefined,
       verbose: false,
+      hooksConfigPath: undefined,
       initialInput: "fix bug",
     });
   });
@@ -78,6 +91,7 @@ describe("parseCliArgs", () => {
       testCommand: undefined,
       maxRetries: 2,
       verbose: false,
+      hooksConfigPath: undefined,
       initialInput: "fix bug",
     });
   });
@@ -100,6 +114,7 @@ describe("parseCliArgs", () => {
       testCommand: undefined,
       maxRetries: undefined,
       verbose: true,
+      hooksConfigPath: undefined,
       initialInput: "fix",
     });
     expect(parseCliArgs(["-v", "fix"])).toEqual({
@@ -107,8 +122,26 @@ describe("parseCliArgs", () => {
       testCommand: undefined,
       maxRetries: undefined,
       verbose: true,
+      hooksConfigPath: undefined,
       initialInput: "fix",
     });
+  });
+
+  it("captures --hooks-config value without sending it as user input", () => {
+    expect(parseCliArgs(["--hooks-config", "hooks.json", "run"])).toEqual({
+      autoApprove: false,
+      testCommand: undefined,
+      maxRetries: undefined,
+      verbose: false,
+      hooksConfigPath: "hooks.json",
+      initialInput: "run",
+    });
+  });
+
+  it("throws when --hooks-config has no value", () => {
+    expect(() => parseCliArgs(["--hooks-config"])).toThrow(
+      /--hooks-config requires a value/
+    );
   });
 });
 
@@ -171,7 +204,12 @@ describe("handleUserInput", () => {
     );
 
     expect(shouldContinue).toBe(true);
-    expect(runner).toHaveBeenCalledWith("hello", baseConfig, registry);
+    expect(runner).toHaveBeenCalledWith(
+      "hello",
+      baseConfig,
+      registry,
+      expect.any(Object)
+    );
     expect(writeLine).toHaveBeenCalledWith("done");
   });
 
