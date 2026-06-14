@@ -290,7 +290,7 @@ export function TuiApp({
       </Box>
       <Box flexDirection="column" marginTop={1}>
         {messages.length === 0 ? (
-          <Text color="gray">输入任务后按 Enter，输入 .exit 或 Ctrl+C 退出。</Text>
+          <StartupScreen config={config} />
         ) : (
           messages.map((message) => (
             <TranscriptLine key={message.id} message={message} />
@@ -312,6 +312,48 @@ export function TuiApp({
           isRunning={isRunning}
           isPermissionPending={permissionPrompt !== null}
         />
+      </Box>
+    </Box>
+  );
+}
+
+function StartupScreen({
+  config,
+}: {
+  config: AppConfig;
+}): React.ReactElement {
+  const permissionMode = config.autoApprove ? "auto approve" : "manual approval";
+
+  return (
+    <Box
+      flexDirection="column"
+      borderStyle="round"
+      borderColor="cyan"
+      paddingX={2}
+      paddingY={1}
+    >
+      <Text>
+        <Text color="cyan" bold>
+          coding-agent
+        </Text>
+        <Text color="gray"> local TUI</Text>
+      </Text>
+      <Box marginTop={1}>
+        <Text bold>Welcome to coding-agent</Text>
+      </Box>
+      <Box flexDirection="column" marginTop={1}>
+        <Text color="cyan">{"     /\\"}</Text>
+        <Text color="cyan">{"    /  \\"}</Text>
+        <Text color="cyan">{"   /_/\\_\\"}</Text>
+        <Text color="cyan">  agent loop</Text>
+      </Box>
+      <Box flexDirection="column" marginTop={1}>
+        <Text color="gray">model: {config.model}</Text>
+        <Text color="gray">cwd: {config.workingDirectory}</Text>
+        <Text color="gray">permissions: {permissionMode}</Text>
+      </Box>
+      <Box marginTop={1}>
+        <Text color="gray">Enter to send - .exit or Ctrl+C to exit</Text>
       </Box>
     </Box>
   );
