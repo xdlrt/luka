@@ -54,7 +54,9 @@ describe("TuiApp permission flow", () => {
     await waitForInputReady(instance);
 
     await typeAndSubmit(instance, "write");
-    await waitFor(() => expect(frame(instance)).toContain("Proceed? y/n"));
+    await waitFor(() =>
+      expect(frame(instance)).toContain("Do you want to proceed? y/n")
+    );
     await waitForPermissionReady(instance);
 
     instance.stdin.write("y");
@@ -85,10 +87,39 @@ describe("TuiApp permission flow", () => {
     await waitForInputReady(instance);
 
     await typeAndSubmit(instance, "write");
-    await waitFor(() => expect(frame(instance)).toContain("Proceed? y/n"));
+    await waitFor(() =>
+      expect(frame(instance)).toContain("Do you want to proceed? y/n")
+    );
     await waitForPermissionReady(instance);
 
     instance.stdin.write("n");
+    await waitFor(() => expect(frame(instance)).toContain("done"));
+
+    expect(execute).not.toHaveBeenCalled();
+    expect(frame(instance)).toContain("[PERMISSION] Denied write_file");
+  });
+
+  it("denies write tools with escape", async () => {
+    const registry = new ToolRegistry();
+    const execute = vi.fn(async () => ({ output: "wrote file" }));
+    registry.register(createTool("write_file", "write", execute));
+    const runner = createPermissionRunner("write_file", {
+      path: "note.txt",
+      content: "hello",
+    });
+    const instance = render(
+      <TuiApp
+        config={baseConfig}
+        registry={registry}
+        sessionRunner={runner}
+      />
+    );
+    await waitForInputReady(instance);
+
+    await typeAndSubmit(instance, "write");
+    await waitForPermissionReady(instance);
+
+    instance.stdin.write("\u001B");
     await waitFor(() => expect(frame(instance)).toContain("done"));
 
     expect(execute).not.toHaveBeenCalled();
@@ -197,7 +228,9 @@ async function waitForInputReady(instance: {
 async function waitForPermissionReady(instance: {
   lastFrame(): string | undefined;
 }): Promise<void> {
-  await waitFor(() => expect(frame(instance)).toContain("Proceed? y/n"));
+  await waitFor(() =>
+    expect(frame(instance)).toContain("Do you want to proceed? y/n")
+  );
   await new Promise((resolve) => setTimeout(resolve, 25));
 }
 

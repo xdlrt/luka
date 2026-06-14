@@ -59,10 +59,13 @@ export function TuiApp({
     useState<PermissionPrompt | null>(null);
   const nextMessageId = useRef(1);
   const inputRef = useRef("");
+  const cursorOffsetRef = useRef(0);
   const permissionPromptRef = useRef<PermissionPrompt | null>(null);
 
-  const updateInput = useCallback((nextInput: string) => {
+  const updateInput = useCallback((nextInput: string, nextOffset?: number) => {
+    const offset = clampOffset(nextOffset ?? nextInput.length, nextInput);
     inputRef.current = nextInput;
+    cursorOffsetRef.current = offset;
     setInput(nextInput);
   }, []);
 
@@ -180,6 +183,14 @@ export function TuiApp({
     [appendMessage, updatePermissionPrompt]
   );
 
+  const editInput = useCallback(
+    (editor: (current: string, offset: number) => InputEdit) => {
+      const edit = editor(inputRef.current, cursorOffsetRef.current);
+      updateInput(edit.input, edit.cursorOffset);
+    },
+    [updateInput]
+  );
+
   useInput((pressedInput, key) => {
     if (permissionPromptRef.current !== null) {
       if (pressedInput.toLowerCase() === "y") {
@@ -198,13 +209,66 @@ export function TuiApp({
       void submit(inputRef.current);
       return;
     }
-    if (key.backspace || key.delete) {
-      updateInput(inputRef.current.slice(0, -1));
+    if (isRunning) return;
+    if (key.ctrl) {
+      const handled = handleCtrlInput(pressedInput, editInput);
+      if (handled) return;
+    }
+    if (key.leftArrow) {
+      editInput((current, offset) => ({
+        input: current,
+        cursorOffset: Math.max(0, offset - 1),
+      }));
       return;
     }
-    if (isRunning || key.ctrl || key.meta || key.escape || key.tab) return;
+    if (key.rightArrow) {
+      editInput((current, offset) => ({
+        input: current,
+        cursorOffset: Math.min(current.length, offset + 1),
+      }));
+      return;
+    }
+    if (key.home) {
+      editInput((current) => ({ input: current, cursorOffset: 0 }));
+      return;
+    }
+    if (key.end) {
+      editInput((current) => ({
+        input: current,
+        cursorOffset: current.length,
+      }));
+      return;
+    }
+    if (key.backspace) {
+      editInput((current, offset) => {
+        if (offset === 0) return { input: current, cursorOffset: offset };
+        return {
+          input: `${current.slice(0, offset - 1)}${current.slice(offset)}`,
+          cursorOffset: offset - 1,
+        };
+      });
+      return;
+    }
+    if (key.delete) {
+      editInput((current, offset) => {
+        if (offset >= current.length) {
+          return { input: current, cursorOffset: offset };
+        }
+        return {
+          input: `${current.slice(0, offset)}${current.slice(offset + 1)}`,
+          cursorOffset: offset,
+        };
+      });
+      return;
+    }
+    if (key.meta || key.escape || key.tab) return;
     if (pressedInput !== "") {
-      updateInput(`${inputRef.current}${pressedInput}`);
+      editInput((current, offset) => ({
+        input: `${current.slice(0, offset)}${pressedInput}${current.slice(
+          offset
+        )}`,
+        cursorOffset: offset + pressedInput.length,
+      }));
     }
   });
 
@@ -236,12 +300,15 @@ export function TuiApp({
       {permissionPrompt !== null ? (
         <Box flexDirection="column" marginTop={1}>
           <Text color="yellow">{permissionPrompt.message}</Text>
-          <Text color="yellow">Proceed? y/n</Text>
+          <Text color="yellow">
+            Do you want to proceed? y/n - Esc to cancel
+          </Text>
         </Box>
       ) : null}
       <Box marginTop={1}>
         <InputLine
           input={input}
+          cursorOffset={cursorOffsetRef.current}
           isRunning={isRunning}
           isPermissionPending={permissionPrompt !== null}
         />
@@ -252,19 +319,32 @@ export function TuiApp({
 
 function InputLine({
   input,
+  cursorOffset,
   isRunning,
 }: {
   input: string;
+  cursorOffset: number;
   isRunning: boolean;
   isPermissionPending: boolean;
 }): React.ReactElement {
   const prompt = "> ";
-  const displayText = isRunning ? "Running..." : input;
+  const offset = clampOffset(cursorOffset, input);
+  const beforeCursor = input.slice(0, offset);
+  const cursorText = input[offset] ?? " ";
+  const afterCursor = input.slice(offset + (input[offset] === undefined ? 0 : 1));
 
   return (
     <Box>
       <Text color={isRunning ? "gray" : "green"}>{prompt}</Text>
-      <Text color={isRunning ? "gray" : undefined}>{displayText}</Text>
+      {isRunning ? (
+        <Text color="gray">Running...</Text>
+      ) : (
+        <>
+          <Text>{beforeCursor}</Text>
+          <Text inverse>{cursorText}</Text>
+          <Text>{afterCursor}</Text>
+        </>
+      )}
     </Box>
   );
 }
@@ -323,4 +403,78 @@ function formatContentPreview(content: unknown): string {
 
 function formatValue(value: unknown): string {
   return typeof value === "string" ? value : "<missing>";
+}
+
+interface InputEdit {
+  input: string;
+  cursorOffset: number;
+}
+
+function clampOffset(offset: number, input: string): number {
+  return Math.max(0, Math.min(offset, input.length));
+}
+
+function handleCtrlInput(
+  pressedInput: string,
+  editInput: (editor: (current: string, offset: number) => InputEdit) => void
+): boolean {
+  if (pressedInput === "a") {
+    editInput((current) => ({ input: current, cursorOffset: 0 }));
+    return true;
+  }
+  if (pressedInput === "e") {
+    editInput((current) => ({ input: current, cursorOffset: current.length }));
+    return true;
+  }
+  if (pressedInput === "b") {
+    editInput((current, offset) => ({
+      input: current,
+      cursorOffset: Math.max(0, offset - 1),
+    }));
+    return true;
+  }
+  if (pressedInput === "f") {
+    editInput((current, offset) => ({
+      input: current,
+      cursorOffset: Math.min(current.length, offset + 1),
+    }));
+    return true;
+  }
+  if (pressedInput === "u") {
+    editInput((current, offset) => ({
+      input: current.slice(offset),
+      cursorOffset: 0,
+    }));
+    return true;
+  }
+  if (pressedInput === "k") {
+    editInput((current, offset) => ({
+      input: current.slice(0, offset),
+      cursorOffset: offset,
+    }));
+    return true;
+  }
+  if (pressedInput === "w") {
+    editInput((current, offset) => {
+      const beforeCursor = current.slice(0, offset);
+      const deleteFrom = findWordDeleteStart(beforeCursor);
+      return {
+        input: `${current.slice(0, deleteFrom)}${current.slice(offset)}`,
+        cursorOffset: deleteFrom,
+      };
+    });
+    return true;
+  }
+  return false;
+}
+
+function findWordDeleteStart(input: string): number {
+  let index = input.length;
+  while (index > 0 && /\s/.test(input[index - 1] ?? "")) {
+    index--;
+  }
+  while (index > 0 && !/\s/.test(input[index - 1] ?? "")) {
+    index--;
+  }
+  return index;
 }

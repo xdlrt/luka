@@ -375,3 +375,11 @@
 - Why: readline REPL 已经能跑通最小闭环，但多轮交互缺少运行状态、消息流、工具摘要和权限确认的结构化呈现，用户很难像使用 Claude Code 一样持续输入任务并观察 agent 当前状态。首版选择基础 Ink TUI，而不是完整 IDE 或流式渲染，是为了改善交互体验，同时不扩大 Agent Loop、工具协议和 Harness 安全边界。
 - What: 无参数启动改为进入基础 Ink TUI，带一次性任务时仍保持原 CLI 路径；新增 TUI 消息流、单行输入、运行态、TODO 展示、工具摘要和内联 `y/n` 权限确认。会话执行和 observability recorder 从 CLI 入口抽到共享 session 层，TUI 和一次性 CLI 复用同一条 tool call -> Harness -> ToolRegistry 主链路。依赖新增 Ink/React 和 TUI 测试库，TS/Vitest 配置支持 TSX，并关闭测试文件并行以稳定终端交互测试。
 - How: TUI 自己维护输入缓冲和权限确认 promise，但所有真实工具执行仍由 Harness 编排，`--auto-approve` 仍只跳过人工确认而不绕过路径、命令规则或参数校验。实现过程中尝试过显式终端光标定位，但 Ink/Yoga 坐标在当前布局下会把真实光标放错位置，最终删除显式光标逻辑，只保留普通输入文本，避免错误视觉状态影响可用性。验证方式为 `npm run build`、`npm test -- tests/tui/app.test.tsx tests/tui/permission.test.tsx`、全量 `npm test` 和 `git diff --check`；最终全量测试为 46 个测试文件、323 条测试全部通过。
+
+## align tui input interactions
+
+- commit: align tui input interactions
+- time: 2026-06-14 22:36
+- Why: 当前 Ink TUI 已经提供基础输入、运行状态和权限确认，但输入框仍停留在尾部追加/删除模型，无法像 claude-code-main 的终端输入一样进行基础光标编辑。为避免把 slash command、历史搜索、模型选择等未要求能力带进当前极简 Agent，本次只对齐现有输入和确认流程的键盘交互。
+- What: TUI 输入现在维护光标位置，支持在光标处插入字符、Left/Right/Home/End、Backspace/Delete，以及 Ctrl+A/E/B/F/U/K/W 等常见终端编辑键；运行中继续锁定普通输入，权限确认提示改为确认式文案并显式支持 Esc 取消。行为边界不变：权限决策仍只有批准/拒绝，真实工具执行仍走 Harness。
+- How: 使用 `inputRef` 与 `cursorOffsetRef` 保持 Ink 输入状态同步，通过局部编辑 helper 统一更新文本和光标，输入行用反色字符渲染 caret，避免引入完整 TextInput 组件或外部状态系统。测试补齐光标插入、删除、Ctrl 编辑、运行中输入忽略和 Esc 拒绝权限；已验证 `npm test -- tests/tui/app.test.tsx tests/tui/permission.test.tsx`、`npm run build`、全量 `npm test` 全部通过。
