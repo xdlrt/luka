@@ -1,65 +1,13 @@
 import { describe, expect, it, vi } from "vitest";
-import {
-  runAgentLoop,
-  type PermissionChecker,
-  type SafetyChecker,
-} from "../src/agent-loop.js";
-import type { LLMClient } from "../src/llm-client.js";
+import { runAgentLoop } from "../src/agent-loop.js";
+import { Harness } from "../src/harness.js";
 import { ToolRegistry, type ToolDefinition } from "../src/tools/index.js";
-import type {
-  ChatCompletionResponse,
-  Message,
-  ToolCall,
-} from "../src/types.js";
-
-const baseConfig = {
-  apiKey: "key-123",
-  baseURL: "https://ark.example.com/api/v3",
-  model: "doubao-test",
-  maxTurns: 20,
-  workingDirectory: "/tmp",
-  autoApprove: false,
-  maxRetries: 3,
-  verbose: false,
-};
-
-function textResponse(content: string): ChatCompletionResponse {
-  return {
-    id: "resp",
-    model: "doubao-test",
-    choices: [
-      {
-        index: 0,
-        message: { role: "assistant", content },
-        finish_reason: "stop",
-      },
-    ],
-    usage: { prompt_tokens: 1, completion_tokens: 1, total_tokens: 2 },
-  };
-}
-
-function toolCallResponse(
-  calls: { id: string; name: string; args: Record<string, unknown> }[]
-): ChatCompletionResponse {
-  const tool_calls: ToolCall[] = calls.map((call) => ({
-    id: call.id,
-    type: "function",
-    function: { name: call.name, arguments: JSON.stringify(call.args) },
-  }));
-
-  return {
-    id: "resp",
-    model: "doubao-test",
-    choices: [
-      {
-        index: 0,
-        message: { role: "assistant", content: null, tool_calls },
-        finish_reason: "tool_calls",
-      },
-    ],
-    usage: { prompt_tokens: 1, completion_tokens: 1, total_tokens: 2 },
-  };
-}
+import {
+  baseConfig,
+  createClient,
+  textResponse,
+  toolCallResponse,
+} from "./test-helpers.js";
 
 function createTool(
   name: string,
@@ -75,37 +23,12 @@ function createTool(
   };
 }
 
-function createClient(responses: ChatCompletionResponse[]): {
-  client: LLMClient;
-  sentMessages: Message[][];
-} {
-  const sentMessages: Message[][] = [];
-  let index = 0;
-  const sendMessage = vi.fn(async (messages: Message[]) => {
-    sentMessages.push(messages.map((message) => ({ ...message })));
-    const response = responses[index];
-    index += 1;
-    if (response === undefined) throw new Error("no more mock responses");
-    return response;
-  });
-
-  return {
-    client: { sendMessage } as unknown as LLMClient,
-    sentMessages,
-  };
-}
-
-function approve(): PermissionChecker {
-  return vi.fn(async () => ({ approved: true }));
-}
-
-function reject(reason = "Cancelled by user"): PermissionChecker {
-  return vi.fn(async () => ({ approved: false, reason }));
-}
-
-function allowSafety(): SafetyChecker {
-  return vi.fn(async () => ({ allowed: true }));
-}
+const silentLogger = {
+  debug: vi.fn(),
+  info: vi.fn(),
+  warn: vi.fn(),
+  error: vi.fn(),
+};
 
 describe("runAgentLoop permission integration", () => {
   it("checks permission before executing an approved read tool", async () => {
@@ -118,15 +41,19 @@ describe("runAgentLoop permission integration", () => {
     const tools = new ToolRegistry();
     const readFile = createTool("read_file", "read", "file content");
     tools.register(readFile);
-    const permissionCheck = approve();
+    const permissionCheck = vi.fn(async () => ({ approved: true as const }));
+    const harness = Harness.fromAppConfig(baseConfig, {
+      permissionCheck,
+      logger: silentLogger,
+    });
 
     const result = await runAgentLoop(
       "read notes",
       baseConfig,
       tools,
       client,
-      permissionCheck,
-      allowSafety()
+      harness,
+      silentLogger
     );
 
     expect(result.success).toBe(true);
@@ -152,15 +79,19 @@ describe("runAgentLoop permission integration", () => {
     const tools = new ToolRegistry();
     const writeFile = createTool("write_file", "write", "wrote file");
     tools.register(writeFile);
-    const permissionCheck = approve();
+    const permissionCheck = vi.fn(async () => ({ approved: true as const }));
+    const harness = Harness.fromAppConfig(baseConfig, {
+      permissionCheck,
+      logger: silentLogger,
+    });
 
     await runAgentLoop(
       "write notes",
       baseConfig,
       tools,
       client,
-      permissionCheck,
-      allowSafety()
+      harness,
+      silentLogger
     );
 
     expect(permissionCheck).toHaveBeenCalledWith(writeFile, input, {
@@ -183,15 +114,22 @@ describe("runAgentLoop permission integration", () => {
     const tools = new ToolRegistry();
     const writeFile = createTool("write_file", "write", "wrote file");
     tools.register(writeFile);
-    const permissionCheck = reject();
+    const permissionCheck = vi.fn(async () => ({
+      approved: false as const,
+      reason: "Cancelled by user",
+    }));
+    const harness = Harness.fromAppConfig(baseConfig, {
+      permissionCheck,
+      logger: silentLogger,
+    });
 
     const result = await runAgentLoop(
       "write notes",
       baseConfig,
       tools,
       client,
-      permissionCheck,
-      allowSafety()
+      harness,
+      silentLogger
     );
 
     expect(result.success).toBe(true);
@@ -217,14 +155,22 @@ describe("runAgentLoop permission integration", () => {
     const tools = new ToolRegistry();
     const runCommand = createTool("run_command", "command", "tests passed");
     tools.register(runCommand);
+    const permissionCheck = vi.fn(async () => ({
+      approved: false as const,
+      reason: "Cancelled by user",
+    }));
+    const harness = Harness.fromAppConfig(baseConfig, {
+      permissionCheck,
+      logger: silentLogger,
+    });
 
     const result = await runAgentLoop(
       "run tests",
       baseConfig,
       tools,
       client,
-      reject(),
-      allowSafety()
+      harness,
+      silentLogger
     );
 
     expect(result.finalMessage).toBe("I will not run it.");
@@ -242,15 +188,19 @@ describe("runAgentLoop permission integration", () => {
       textResponse("missing handled"),
     ]);
     const tools = new ToolRegistry();
-    const permissionCheck = approve();
+    const permissionCheck = vi.fn(async () => ({ approved: true as const }));
+    const harness = Harness.fromAppConfig(baseConfig, {
+      permissionCheck,
+      logger: silentLogger,
+    });
 
     const result = await runAgentLoop(
       "use missing",
       baseConfig,
       tools,
       client,
-      permissionCheck,
-      allowSafety()
+      harness,
+      silentLogger
     );
 
     expect(result.success).toBe(true);
@@ -279,19 +229,23 @@ describe("runAgentLoop permission integration", () => {
     const writeFile = createTool("write_file", "write", "new");
     tools.register(readFile);
     tools.register(writeFile);
-    const permissionCheck: PermissionChecker = vi.fn(async (tool) =>
+    const permissionCheck = vi.fn(async (tool: ToolDefinition) =>
       tool.name === "read_file"
         ? { approved: true }
         : { approved: false, reason: "Cancelled by user" }
     );
+    const harness = Harness.fromAppConfig(baseConfig, {
+      permissionCheck,
+      logger: silentLogger,
+    });
 
     await runAgentLoop(
       "mix",
       baseConfig,
       tools,
       client,
-      permissionCheck,
-      allowSafety()
+      harness,
+      silentLogger
     );
 
     expect(permissionCheck).toHaveBeenCalledTimes(2);
@@ -327,9 +281,20 @@ describe("runAgentLoop permission integration", () => {
     const tools = new ToolRegistry();
     const readFile = createTool("read_file", "read", "secret");
     tools.register(readFile);
-    const permissionCheck = approve();
+    const permissionCheck = vi.fn(async () => ({ approved: true as const }));
+    const harness = Harness.fromAppConfig(baseConfig, {
+      permissionCheck,
+      logger: silentLogger,
+    });
 
-    await runAgentLoop("read outside", baseConfig, tools, client, permissionCheck);
+    await runAgentLoop(
+      "read outside",
+      baseConfig,
+      tools,
+      client,
+      harness,
+      silentLogger
+    );
 
     expect(permissionCheck).not.toHaveBeenCalled();
     expect(readFile.execute).not.toHaveBeenCalled();
@@ -354,9 +319,20 @@ describe("runAgentLoop permission integration", () => {
     const tools = new ToolRegistry();
     const runCommand = createTool("run_command", "command", "deleted");
     tools.register(runCommand);
-    const permissionCheck = approve();
+    const permissionCheck = vi.fn(async () => ({ approved: true as const }));
+    const harness = Harness.fromAppConfig(baseConfig, {
+      permissionCheck,
+      logger: silentLogger,
+    });
 
-    await runAgentLoop("delete", baseConfig, tools, client, permissionCheck);
+    await runAgentLoop(
+      "delete",
+      baseConfig,
+      tools,
+      client,
+      harness,
+      silentLogger
+    );
 
     expect(permissionCheck).not.toHaveBeenCalled();
     expect(runCommand.execute).not.toHaveBeenCalled();
@@ -376,9 +352,23 @@ describe("runAgentLoop permission integration", () => {
     const tools = new ToolRegistry();
     const writeFile = createTool("write_file", "write", "wrote file");
     tools.register(writeFile);
-    const permissionCheck = reject();
+    const permissionCheck = vi.fn(async () => ({
+      approved: false as const,
+      reason: "Cancelled by user",
+    }));
+    const harness = Harness.fromAppConfig(baseConfig, {
+      permissionCheck,
+      logger: silentLogger,
+    });
 
-    await runAgentLoop("write", baseConfig, tools, client, permissionCheck);
+    await runAgentLoop(
+      "write",
+      baseConfig,
+      tools,
+      client,
+      harness,
+      silentLogger
+    );
 
     expect(permissionCheck).toHaveBeenCalledWith(writeFile, input, {
       autoApprove: false,
@@ -405,14 +395,20 @@ describe("runAgentLoop permission integration", () => {
     const tools = new ToolRegistry();
     const runCommand = createTool("run_command", "command", "installed");
     tools.register(runCommand);
-    const permissionCheck = approve();
+    const permissionCheck = vi.fn(async () => ({ approved: true as const }));
+    const config = { ...baseConfig, autoApprove: true };
+    const harness = Harness.fromAppConfig(config, {
+      permissionCheck,
+      logger: silentLogger,
+    });
 
     await runAgentLoop(
       "install",
-      { ...baseConfig, autoApprove: true },
+      config,
       tools,
       client,
-      permissionCheck
+      harness,
+      silentLogger
     );
 
     expect(permissionCheck).not.toHaveBeenCalled();
@@ -445,9 +441,20 @@ describe("runAgentLoop permission integration", () => {
     const readFile = createTool("read_file", "read", "notes");
     tools.register(runCommand);
     tools.register(readFile);
-    const permissionCheck = approve();
+    const permissionCheck = vi.fn(async () => ({ approved: true as const }));
+    const harness = Harness.fromAppConfig(baseConfig, {
+      permissionCheck,
+      logger: silentLogger,
+    });
 
-    await runAgentLoop("mix safety", baseConfig, tools, client, permissionCheck);
+    await runAgentLoop(
+      "mix safety",
+      baseConfig,
+      tools,
+      client,
+      harness,
+      silentLogger
+    );
 
     expect(runCommand.execute).not.toHaveBeenCalled();
     expect(readFile.execute).toHaveBeenCalledWith({ path: "notes.txt" });

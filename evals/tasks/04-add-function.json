@@ -1,0 +1,22 @@
+{
+  "id": "04-add-function",
+  "description": "Add a missing exported function required by tests.",
+  "difficulty": "medium",
+  "prompt": "Implement multiply in math.mjs so math.test.mjs passes.",
+  "setup": {
+    "files": {
+      "math.mjs": "export const add = (a, b) => a + b;\n",
+      "math.test.mjs": "import { multiply } from \"./math.mjs\";\nimport assert from \"node:assert\";\nassert.strictEqual(multiply(3, 4), 12);\nconsole.log(\"Test Files  1 passed (1)\");\nconsole.log(\"      Tests  1 passed (1)\");\nconsole.log(\"   Duration  0.1s\");\n"
+    }
+  },
+  "testCommand": "node math.test.mjs",
+  "expectations": {
+    "files": [
+      {
+        "path": "math.mjs",
+        "contains": ["multiply"]
+      }
+    ],
+    "testsPassing": true
+  }
+}

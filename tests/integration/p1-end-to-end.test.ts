@@ -3,6 +3,7 @@ import os from "node:os";
 import path from "node:path";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { runAgentLoop } from "../../src/agent-loop.js";
+import { Harness } from "../../src/harness.js";
 import type { LLMClient } from "../../src/llm-client.js";
 import { createDefaultToolRegistry } from "../../src/tools/index.js";
 import type {
@@ -106,13 +107,15 @@ describe("P1 end-to-end agent demo", () => {
     });
     const client = { sendMessage } as unknown as LLMClient;
     const permissionCheck = vi.fn(async () => ({ approved: true as const }));
+    const config = { ...baseConfig, workingDirectory: tempDir };
+    const harness = Harness.fromAppConfig(config, { permissionCheck });
 
     const result = await runAgentLoop(
       "在 src/greet.ts 中创建一个函数 greet(name) 返回 Hello, name!",
-      { ...baseConfig, workingDirectory: tempDir },
+      config,
       registry,
       client,
-      permissionCheck
+      harness
     );
 
     await expect(

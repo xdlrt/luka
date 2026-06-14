@@ -1,92 +1,28 @@
 import { describe, expect, it, vi } from "vitest";
-import { runAgentLoop, type SafetyChecker } from "../src/agent-loop.js";
+import { runAgentLoop } from "../src/agent-loop.js";
 import type { AppConfig } from "../src/config.js";
-import type { LLMClient } from "../src/llm-client.js";
+import { Harness } from "../src/harness.js";
 import { ToolRegistry, type ToolDefinition } from "../src/tools/index.js";
-import type {
-  ChatCompletionResponse,
-  Message,
-  ToolCall,
-} from "../src/types.js";
 import type { TestResult } from "../src/verification/test-runner.js";
+import {
+  baseConfig as defaultBaseConfig,
+  createClient,
+  textResponse,
+  toolCallResponse,
+} from "./test-helpers.js";
 
 const baseConfig: AppConfig = {
-  apiKey: "key-123",
-  baseURL: "https://ark.example.com/api/v3",
-  model: "doubao-test",
-  maxTurns: 20,
-  workingDirectory: "/tmp",
+  ...defaultBaseConfig,
   autoApprove: true,
   testCommand: "npm test",
-  maxRetries: 3,
-  verbose: false,
 };
 
-const allowSafety: SafetyChecker = vi.fn(async () => ({ allowed: true }));
-const approve = vi.fn(async () => ({ approved: true as const }));
 const silentLogger = {
   debug: vi.fn(),
   info: vi.fn(),
   warn: vi.fn(),
   error: vi.fn(),
 };
-
-function textResponse(content: string): ChatCompletionResponse {
-  return {
-    id: "resp-text",
-    model: "doubao-test",
-    choices: [
-      {
-        index: 0,
-        message: { role: "assistant", content },
-        finish_reason: "stop",
-      },
-    ],
-    usage: { prompt_tokens: 1, completion_tokens: 1, total_tokens: 2 },
-  };
-}
-
-function toolCallResponse(
-  calls: { id: string; name: string; args: Record<string, unknown> }[]
-): ChatCompletionResponse {
-  const tool_calls: ToolCall[] = calls.map((call) => ({
-    id: call.id,
-    type: "function",
-    function: { name: call.name, arguments: JSON.stringify(call.args) },
-  }));
-
-  return {
-    id: "resp-tool",
-    model: "doubao-test",
-    choices: [
-      {
-        index: 0,
-        message: { role: "assistant", content: null, tool_calls },
-        finish_reason: "tool_calls",
-      },
-    ],
-    usage: { prompt_tokens: 1, completion_tokens: 1, total_tokens: 2 },
-  };
-}
-
-function makeClient(responses: ChatCompletionResponse[]): {
-  client: LLMClient;
-  sentMessages: Message[][];
-} {
-  const queue = [...responses];
-  const sentMessages: Message[][] = [];
-  const sendMessage = vi.fn(async (messages: Message[]) => {
-    sentMessages.push(messages.map((message) => ({ ...message })));
-    const response = queue.shift();
-    if (response === undefined) throw new Error("no more mock responses");
-    return response;
-  });
-
-  return {
-    client: { sendMessage } as unknown as LLMClient,
-    sentMessages,
-  };
-}
 
 function createTool(name: string): ToolDefinition {
   return {
@@ -112,7 +48,7 @@ function testResult(passed: boolean): TestResult {
 
 describe("runAgentLoop retry integration", () => {
   it("feeds failed tests back to the model and lets it edit again", async () => {
-    const { client, sentMessages } = makeClient([
+    const { client, sentMessages } = createClient([
       toolCallResponse([
         { id: "edit-1", name: "edit_file", args: { path: "add.ts" } },
       ]),
@@ -127,15 +63,17 @@ describe("runAgentLoop retry integration", () => {
       .fn()
       .mockResolvedValueOnce(testResult(false))
       .mockResolvedValueOnce(testResult(true));
+    const harness = Harness.fromAppConfig(baseConfig, {
+      testRunner,
+      logger: silentLogger,
+    });
 
     const result = await runAgentLoop(
       "fix add",
       baseConfig,
       tools,
       client,
-      approve,
-      allowSafety,
-      testRunner,
+      harness,
       silentLogger
     );
 
@@ -155,7 +93,7 @@ describe("runAgentLoop retry integration", () => {
   });
 
   it("stops retrying after maxRetries and continues the conversation", async () => {
-    const { client, sentMessages } = makeClient([
+    const { client, sentMessages } = createClient([
       toolCallResponse([
         { id: "edit-1", name: "edit_file", args: { path: "add.ts" } },
       ]),
@@ -167,15 +105,18 @@ describe("runAgentLoop retry integration", () => {
     const tools = new ToolRegistry();
     tools.register(createTool("edit_file"));
     const testRunner = vi.fn(async () => testResult(false));
+    const config = { ...baseConfig, maxRetries: 2 };
+    const harness = Harness.fromAppConfig(config, {
+      testRunner,
+      logger: silentLogger,
+    });
 
     const result = await runAgentLoop(
       "fix add",
-      { ...baseConfig, maxRetries: 2 },
+      config,
       tools,
       client,
-      approve,
-      allowSafety,
-      testRunner,
+      harness,
       silentLogger
     );
 
@@ -189,7 +130,7 @@ describe("runAgentLoop retry integration", () => {
   });
 
   it("does not retry when verification is disabled", async () => {
-    const { client } = makeClient([
+    const { client } = createClient([
       toolCallResponse([
         { id: "edit-1", name: "edit_file", args: { path: "add.ts" } },
       ]),
@@ -198,15 +139,18 @@ describe("runAgentLoop retry integration", () => {
     const tools = new ToolRegistry();
     tools.register(createTool("edit_file"));
     const testRunner = vi.fn(async () => testResult(false));
+    const config = { ...baseConfig, testCommand: undefined };
+    const harness = Harness.fromAppConfig(config, {
+      testRunner,
+      logger: silentLogger,
+    });
 
     await runAgentLoop(
       "fix add",
-      { ...baseConfig, testCommand: undefined },
+      config,
       tools,
       client,
-      approve,
-      allowSafety,
-      testRunner,
+      harness,
       silentLogger
     );
 
@@ -214,7 +158,7 @@ describe("runAgentLoop retry integration", () => {
   });
 
   it("does not run verification when an edit tool returns an error", async () => {
-    const { client } = makeClient([
+    const { client } = createClient([
       toolCallResponse([
         { id: "edit-1", name: "edit_file", args: { path: "add.ts" } },
       ]),
@@ -230,15 +174,17 @@ describe("runAgentLoop retry integration", () => {
       })),
     });
     const testRunner = vi.fn(async () => testResult(false));
+    const harness = Harness.fromAppConfig(baseConfig, {
+      testRunner,
+      logger: silentLogger,
+    });
 
     await runAgentLoop(
       "fix add",
       baseConfig,
       tools,
       client,
-      approve,
-      allowSafety,
-      testRunner,
+      harness,
       silentLogger
     );
 

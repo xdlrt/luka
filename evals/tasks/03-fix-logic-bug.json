@@ -1,0 +1,22 @@
+{
+  "id": "03-fix-logic-bug",
+  "description": "Fix a simple logic bug and pass the provided test command.",
+  "difficulty": "medium",
+  "prompt": "Fix add.mjs so the test command passes.",
+  "setup": {
+    "files": {
+      "add.mjs": "export const add = (a, b) => a - b;\n",
+      "check.mjs": "import { add } from \"./add.mjs\";\nimport assert from \"node:assert\";\nassert.strictEqual(add(2, 3), 5);\nconsole.log(\"Test Files  1 passed (1)\");\nconsole.log(\"      Tests  1 passed (1)\");\nconsole.log(\"   Duration  0.1s\");\n"
+    }
+  },
+  "testCommand": "node check.mjs",
+  "expectations": {
+    "files": [
+      {
+        "path": "add.mjs",
+        "contains": ["a + b"]
+      }
+    ],
+    "testsPassing": true
+  }
+}

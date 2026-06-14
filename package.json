@@ -8,6 +8,7 @@
     "build": "tsc",
     "ci": "npm run build && npm test",
     "dev": "tsc --watch",
+    "eval": "npm run build && node dist/evals/runner.js",
     "start": "npm run build && node dist/index.js",
     "test": "vitest run"
   },

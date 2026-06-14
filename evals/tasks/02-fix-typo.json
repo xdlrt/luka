@@ -1,0 +1,19 @@
+{
+  "id": "02-fix-typo",
+  "description": "Fix a spelling mistake in an existing text file.",
+  "difficulty": "easy",
+  "prompt": "Fix the typo in message.txt by changing teh to the.",
+  "setup": {
+    "files": {
+      "message.txt": "Ship teh harness carefully.\n"
+    }
+  },
+  "expectations": {
+    "files": [
+      {
+        "path": "message.txt",
+        "contains": ["Ship the harness carefully."]
+      }
+    ]
+  }
+}
