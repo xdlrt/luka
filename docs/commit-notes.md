@@ -199,3 +199,11 @@
 - Why: P2-W5 需要在人工确认之前建立可测试的命令拦截能力；如果先把规则写进 Agent Loop 或 `run_command`，后续 Harness 接管执行链路时会重复迁移边界，也容易把安全策略和工具实现耦合在一起。
 - What: 新增独立命令安全规则引擎，只根据 `run_command` 的命令文本给出允许或拒绝决策；首批规则覆盖递归删除、外部 URL 请求、强制推送、系统路径写入、`sudo` 提权和 `chmod 777`，但暂不改变现有工具执行行为，避免提前完成 P2-W5-T3 的集成任务。
 - How: 用只读规则表和稳定 `ruleId`/`reason` 返回值承载策略，正则匹配保持最小实现并通过反向用例控制误伤；验证方式为 `npm run build`、`npm test -- tests/permissions/rules.test.ts` 和全量 `npm test`，确认 15 个测试文件和 104 条测试全部通过。
+
+## plan observability eval milestone
+
+- commit: plan observability eval milestone
+- time: 2026-06-14 10:50
+- Why: 原 P4 只把 eval 当作阶段性 runner、报告和门禁，缺少可观测事件、hook 扩展点和数据回流底座；如果没有统一 trace，后续评测结果只能说明通过率，难以复盘 Agent 在 LLM、工具、权限和验证链路上的真实行为。
+- What: 将 P4 重构为“可观测与持续评测”里程碑，先建设 lifecycle event、hook runtime、本地 JSONL 和 HTTP feedback，再让 eval runner 消费观测 trace 生成趋势与退化门禁；原发布写作阶段顺延为 P5，并在总计划中补 Observability & Hooks 和 Continuous Eval 模块。
+- How: 参考 Codex/TraeX hook 的生命周期思想，但把首版范围收敛到当前项目已经或即将拥有的 session、prompt、LLM、tool、permission、verification、stop 和 eval 事件；选择 JSON 配置避免引入 TOML 依赖，选择本地 JSONL 作为事实来源、HTTP feedback 作为可选回流。验证方式为 `git diff --check`，本次为文档计划调整，未运行代码测试。

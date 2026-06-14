@@ -8,7 +8,8 @@
 - [P1: 通主循环 — Agent Loop + 工具调用最小闭环](./plan/p1-agent-loop.md)
 - [P2: 立 Harness — 权限安全 + 自验证回路](./plan/p2-harness.md)
 - [P3: 强能力 — 上下文管理 + 规划/TODO](./plan/p3-context-planning.md)
-- [P4: 成作品 — 开源打磨 + 技术文章](./plan/p4-release-writing.md)
+- [P4: 可观测与持续评测 — Hooks + Telemetry + Eval](./plan/p4-continuous-evals.md)
+- [P5: 成作品 — 开源打磨 + 技术文章](./plan/p5-release-writing.md)
 
 ## 范围
 
@@ -32,6 +33,11 @@ flowchart TD
     C -->|无需工具| I
     G --> J[上下文管理\n压缩 / 裁剪 / 检索]
     J --> C
+    C --> K[可观测事件流\nHooks / Telemetry / Feedback]
+    D --> K
+    E --> K
+    H --> K
+    K --> L[持续 Eval\nTrace 汇总 / 趋势 / 门禁]
 ```
 
 ## 核心模块
@@ -44,13 +50,16 @@ flowchart TD
 | 4 | Permissions & Safety Harness | 统一编排权限确认、危险命令拦截、沙箱边界和验证触发 |
 | 5 | Planning / TODO | 支持任务拆解、TodoWrite 状态追踪和长任务进度管理 |
 | 6 | Self-Verification | 编辑后自动运行测试，将失败结果回喂模型并限制重试次数 |
+| 7 | Observability & Hooks | 采集生命周期事件，执行可配置 hooks，并把本地 trace 或 HTTP feedback 回流到评测系统 |
+| 8 | Continuous Eval | 基于观测 trace 汇总指标、生成趋势报告，并在能力退化时触发门禁 |
 
 ## 里程碑
 
 - [ ] **P1 里程碑**：CLI Agent 能通过 tool_calls 循环读写文件，能自主完成“创建文件并回读验证”。
 - [ ] **P2 里程碑**：Agent 具备完整 Harness（权限门控 + 安全规则 + 沙箱 + 自验证 + 重试）和 eval 基线数据。
 - [ ] **P3 里程碑**：Agent 能处理多文件项目（grep/glob 检索 + 上下文压缩 + TodoWrite 规划）和扩展 eval 数据。
-- [ ] **P4 里程碑**：形成可对外发布的开源仓库，并完成技术文章。
+- [ ] **P4 里程碑**：Agent 具备可观测事件流、可扩展 hook 机制、数据回流能力和基于观测数据的持续 eval 平台。
+- [ ] **P5 里程碑**：形成可对外发布的开源仓库，并完成技术文章。
 
 ---
 
@@ -88,6 +97,11 @@ coding-agent/
 │   ├── planning/
 │   │   ├── todo.ts               # TodoWrite 式状态跟踪
 │   │   └── decomposer.ts         # 任务拆解提示词
+│   ├── observability/
+│   │   ├── events.ts             # 生命周期事件 schema
+│   │   ├── hooks.ts              # Hook runtime
+│   │   ├── recorder.ts           # EventRecorder
+│   │   └── sinks.ts              # 本地 JSONL 与 HTTP feedback sink
 │   └── verification/
 │       ├── test-runner.ts        # 自动跑测试
 │       ├── format-results.ts     # 测试结果格式化
@@ -101,8 +115,14 @@ coding-agent/
 │   └── integration/
 ├── evals/
 │   ├── tasks/                    # Eval 任务定义 (JSON)
+│   ├── baselines/                # Eval 基线
+│   ├── results/                  # 历史运行结果
+│   ├── dashboard/                # 趋势看板数据
+│   ├── schema.ts                 # Eval schema 校验
+│   ├── trace-reader.ts           # 从观测 JSONL 汇总 eval 指标
+│   ├── baseline.ts               # 基线对比与退化门禁
 │   ├── runner.ts                 # Eval 执行器
-│   └── results/                  # 结果输出
+│   └── report.ts                 # 趋势报告生成器
 ├── package.json
 ├── tsconfig.json
 ├── vitest.config.ts
@@ -127,6 +147,11 @@ coding-agent/
 | 上下文压缩 | LLM 摘要 | 比简单截断更智能 |
 | Token 计数 | 近似计数 (chars/4) | 精确 tokenization 复杂度高，收益不成比例 |
 | 重试上限 | 3 次 | 在持久性和成本时延间平衡 |
+| Hook 配置 | JSON 配置文件 | 避免为 P4 引入 TOML 依赖，同时保留类似 Codex 生命周期 hook 的扩展点 |
+| 观测落盘 | 本地 JSONL | 一行一个事件，便于流式写入、CI artifact 上传和后续 trace 汇总 |
+| 数据回流 | 本地 JSONL + 可选 HTTP feedback | 默认不依赖远端服务，需要接平台时通过配置启用 HTTP 回流 |
+| 持续 eval | 基于观测 trace 汇总 | 普通 CLI 与 eval 共享同一套事件证据，避免 runner 内重复埋点 |
+| 真实 LLM eval | 与 mock eval 分离 | PR 可无密钥校验 hook/trace/report，main 或定时任务有密钥时再运行真实模型 |
 
 ---
 
