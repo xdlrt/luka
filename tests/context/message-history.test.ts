@@ -31,6 +31,34 @@ describe("MessageHistory", () => {
     ]);
   });
 
+  it("replaces messages in order", () => {
+    const history = new MessageHistory([
+      { role: "user", content: "old" },
+    ]);
+
+    history.replace([
+      { role: "system", content: "system" },
+      { role: "assistant", content: "new" },
+    ]);
+
+    expect(history.getMessages()).toEqual([
+      { role: "system", content: "system" },
+      { role: "assistant", content: "new" },
+    ]);
+  });
+
+  it("does not keep the replacement array reference", () => {
+    const history = new MessageHistory();
+    const messages: Message[] = [{ role: "user", content: "one" }];
+
+    history.replace(messages);
+    messages.push({ role: "assistant", content: "external mutation" });
+
+    expect(history.getMessages()).toEqual([
+      { role: "user", content: "one" },
+    ]);
+  });
+
   it("returns the last N messages", () => {
     const history = new MessageHistory([
       { role: "system", content: "system" },

@@ -1,4 +1,9 @@
 import type { AppConfig } from "./config.js";
+import { ContextCompressor } from "./context/compressor.js";
+import type {
+  ContextCompressorClient,
+  HistoryCompressor,
+} from "./context/compressor.js";
 import { MessageHistory } from "./context/message-history.js";
 import { SYSTEM_PROMPT } from "./context/system-prompt.js";
 import { Harness, type HarnessLike } from "./harness.js";
@@ -20,7 +25,10 @@ export async function runAgentLoop(
   tools: ToolRegistry,
   client: LLMClient = new LLMClient(config),
   harness: HarnessLike | undefined = undefined,
-  logger: Logger = createLogger({ verbose: config.verbose })
+  logger: Logger = createLogger({ verbose: config.verbose }),
+  compressor: HistoryCompressor = new ContextCompressor(
+    client as ContextCompressorClient
+  )
 ): Promise<AgentResult> {
   const activeHarness =
     harness ?? Harness.fromAppConfig(config, { logger });
@@ -39,6 +47,15 @@ export async function runAgentLoop(
     logger.info(`[TURN ${turn}] started`);
     activeHarness.beginTurn();
     const turnStartedAt = Date.now();
+    if (await compressor.shouldCompress(history)) {
+      const beforeTokens = history.getApproxTokenCount();
+      const compressedHistory = await compressor.compress(history);
+      const afterTokens = compressedHistory.getApproxTokenCount();
+      history.replace(compressedHistory.getMessages());
+      logger.info(
+        `[CONTEXT] Compressing: ${beforeTokens} → ${afterTokens} tokens`
+      );
+    }
     const messages = history.getMessages();
     logger.debug(
       `[CONTEXT] messages=${messages.length}, approxTokens=${history.getApproxTokenCount()}`

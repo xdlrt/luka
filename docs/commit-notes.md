@@ -287,3 +287,11 @@
 - Why: P3-W9 的目标是让 Agent 从单文件最小闭环走向多文件项目处理能力。仅靠 `read_file` 会迫使模型猜文件位置或读取大量无关内容，缺少 `grep`/`glob` 的检索入口；同时 Agent Loop 继续直接维护裸消息数组，会让后续上下文压缩、预算管理和 token 观测难以集中接入。
 - What: 新增默认 `grep`、`glob` 只读检索工具，并在系统提示词中明确 glob 定位、grep 搜索、read_file 读完整上下文、edit_file 修改的工作流；Harness 对检索工具执行路径沙箱但不触发编辑后验证。新增 `MessageHistory` 管理 OpenAI-compatible 消息历史，Agent Loop 改为通过它追加 system/user/assistant/tool 消息，并在结果中返回 API usage 累计的 `totalTokens`。P3-W9-T1 到 T5 checklist 同步标记完成。
 - How: `glob` 使用 `fast-glob`，默认排除 `node_modules`、`.git`、`dist`，输出排序并限制前 100 条；`grep` 复用 glob 遍历文本文件，跳过二进制内容，按 `path:line: text` 输出并限制前 50 条。`MessageHistory` 保持协议对象原样，只提供浅拷贝数组和约 4 字符/token 的估算，避免把运行时状态混入 `src/types.ts`。验证方式为 `npm run build` 和全量 `npm test`，确认 31 个测试文件和 218 条测试全部通过；期间发现默认 registry 与 Harness 测试需要同步覆盖新检索工具，已补齐顺序、schema、沙箱和只读不验证断言。
+
+## add context compressor
+
+- commit: add context compressor
+- time: 2026-06-14 14:58
+- Why: P3-W10 需要让长对话在进入模型前可压缩，否则多文件任务积累的 read/grep/glob/tool 结果会不断推高上下文体积，最终要么请求失败，要么迫使后续实现做粗暴截断。首版选择独立压缩器而不是扩展全局配置，是为了先固定最小可测行为，并避免把阈值、CLI flag 和环境变量校验一起拉进本任务。
+- What: 新增 `ContextCompressor`，在 token 估算超过阈值时用一次 LLM 摘要早期消息，保留 system 消息和最近 N 条对话消息，并把摘要写成 `Context summary:` assistant 消息。Agent Loop 在每轮 LLM 调用前检查压缩，触发后替换 `MessageHistory` 并记录压缩前后 token；P3-W10-T1/T2 checklist 同步标记完成。
+- How: 压缩器只依赖最小 `chat(systemPrompt, userMessage)` 接口，摘要提示词固定要求保留读取/修改文件、关键决定、当前状态、验证失败和下一步，避免把 tool schema 或运行时字段暴露给摘要调用。`MessageHistory.replace()` 提供受控替换能力，Agent Loop 通过可注入 `HistoryCompressor` 做测试隔离。验证方式为目标测试 `npm test -- tests/context/message-history.test.ts tests/context/compressor.test.ts tests/agent-loop.test.ts tests/integration/p1-end-to-end.test.ts`、`npm run build`、全量 `npm test` 和 `git diff --check`，确认 32 个测试文件和 229 条测试全部通过。
