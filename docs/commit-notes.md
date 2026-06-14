@@ -391,3 +391,11 @@
 - Why: 当前实现已经跑通 Claude Code-style coding agent 的核心闭环，但如果要把它从学习型内核推进到可称为产品 MVP，还需要把会话恢复、TUI 工作台、命令权限、工具编排和 diff/验证闭环拆成可执行计划。直接在对话里描述优先级不利于后续接续开发，因此需要把 P6-P10 沉淀到 `docs/plan/` 并纳入总计划索引。
 - What: 新增 P6 到 P10 五份后续计划，分别覆盖会话持久化与恢复、REPL/TUI 交互升级、命令安全与权限规则增强、工具执行编排升级、文件 diff 与验证闭环增强；`docs/detailed-execution-plan.md` 同步加入新计划链接、核心模块和未完成里程碑。所有新增 checklist 均保持 `[ ]`，避免把规划误标为已实现能力。
 - How: 沿用既有阶段计划的格式，把每个方向拆成任务说明、验收标准、关键文件和验证要求；计划中特别保留现有项目边界，例如继续使用 OpenAI-compatible `chat/completions`、不声称完整 OS 沙箱、不把 SubAgent 放入 MVP 前五。验证方式为文档 diff 和状态检查，本次为纯文档计划更新，未运行代码测试。
+
+## add claude style tui startup screen
+
+- commit: add claude style tui startup screen
+- time: 2026-06-14 22:44
+- Why: 当前 TUI 空会话首屏只有一行提示，虽然可用，但缺少 Claude Code 风格启动画面的身份感和上下文信息。为了提升进入 TUI 后的第一眼可读性，同时不引入 slash command、历史恢复或模型切换等未实现能力，本次只把空状态改成静态欢迎面板。
+- What: 空消息状态下新增 `StartupScreen`，展示 `Welcome to coding-agent`、简洁 ASCII 标识、当前 model、cwd、权限模式以及发送/退出提示；用户提交第一条消息后启动画面消失，继续使用原有消息流。顶部状态栏、输入框、权限确认和工具执行链路不变。
+- How: 启动画面作为 `messages.length === 0` 的展示分支实现，不改变 TUI 状态机或 session runner；测试更新首屏断言，并新增提交后隐藏启动画面的覆盖。验证方式为 `npm test -- tests/tui/app.test.tsx tests/tui/permission.test.tsx`、`npm run build` 和全量 `npm test`，确认 46 个测试文件、330 条测试全部通过。

@@ -47,7 +47,9 @@ describe("TuiApp", () => {
     expect(frame(instance)).toContain("Ready");
     expect(frame(instance)).toContain("model: doubao-test");
     expect(frame(instance)).toContain("cwd: /tmp/project");
-    expect(frame(instance)).toContain("输入任务后按 Enter");
+    expect(frame(instance)).toContain("Welcome to coding-agent");
+    expect(frame(instance)).toContain("permissions: manual approval");
+    expect(frame(instance)).toContain("Enter to send - .exit or Ctrl+C to exit");
   });
 
   it("renders typed input at the prompt", async () => {
@@ -184,6 +186,34 @@ describe("TuiApp", () => {
     );
     expect(frame(instance)).toContain("You");
     expect(frame(instance)).toContain("hello");
+    expect(frame(instance)).toContain("Agent");
+  });
+
+  it("hides the startup screen after the first submitted message", async () => {
+    const sessionRunner: TuiSessionRunner = vi.fn(async () => ({
+      finalMessage: "done",
+      turnsUsed: 1,
+      toolsCalled: [],
+      success: true,
+      totalTokens: 2,
+      todoDisplay: undefined,
+    }));
+    const instance = render(
+      <TuiApp
+        config={baseConfig}
+        registry={new ToolRegistry()}
+        sessionRunner={sessionRunner}
+      />
+    );
+    await waitForInputReady(instance);
+
+    expect(frame(instance)).toContain("Welcome to coding-agent");
+
+    await typeAndSubmit(instance, "hello");
+    await waitFor(() => expect(frame(instance)).toContain("done"));
+
+    expect(frame(instance)).not.toContain("Welcome to coding-agent");
+    expect(frame(instance)).toContain("You");
     expect(frame(instance)).toContain("Agent");
   });
 
