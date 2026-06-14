@@ -22,6 +22,7 @@ describe("default tool registry integration", () => {
     expect(registry.getAll().map((tool) => tool.name)).toEqual([
       "read_file",
       "write_file",
+      "edit_file",
       "run_command",
     ]);
     expect(
@@ -29,6 +30,7 @@ describe("default tool registry integration", () => {
     ).toEqual([
       ["read_file", "read"],
       ["write_file", "write"],
+      ["edit_file", "write"],
       ["run_command", "command"],
     ]);
   });
@@ -38,7 +40,7 @@ describe("default tool registry integration", () => {
 
     expect(
       registry.getToolDefinitions().map((tool) => tool.function.name)
-    ).toEqual(["read_file", "write_file", "run_command"]);
+    ).toEqual(["read_file", "write_file", "edit_file", "run_command"]);
     for (const definition of registry.getToolDefinitions()) {
       expect(definition.type).toBe("function");
       expect(definition.function.description).not.toBe("");
@@ -62,6 +64,20 @@ describe("default tool registry integration", () => {
         input: { path: "notes/hello.txt" },
       },
       {
+        id: "call-edit",
+        name: "edit_file",
+        input: {
+          path: "notes/hello.txt",
+          old_string: "hello",
+          new_string: "hello edited",
+        },
+      },
+      {
+        id: "call-read-edited",
+        name: "read_file",
+        input: { path: "notes/hello.txt" },
+      },
+      {
         id: "call-run",
         name: "run_command",
         input: { command: "node -e \"console.log('ok')\"" },
@@ -81,9 +97,17 @@ describe("default tool registry integration", () => {
       tool_call_id: "read_file",
       output: "hello",
     });
-    expect(results[2].tool_call_id).toBe("run_command");
-    expect(results[2].error).toBeUndefined();
-    expect(results[2].output).toMatch(/ok/);
+    expect(results[2]).toEqual({
+      tool_call_id: "edit_file",
+      output: "Edited notes/hello.txt: replaced 1 occurrence",
+    });
+    expect(results[3]).toEqual({
+      tool_call_id: "read_file",
+      output: "hello edited",
+    });
+    expect(results[4].tool_call_id).toBe("run_command");
+    expect(results[4].error).toBeUndefined();
+    expect(results[4].output).toMatch(/ok/);
   });
 
   it("throws when a simulated tool call names an unknown tool", async () => {

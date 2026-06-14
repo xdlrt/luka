@@ -8,10 +8,10 @@
 
 这是一个极简 coding agent。当前真实能力是 P1 最小闭环：CLI/REPL 接收用户输入，Agent Loop 调用 OpenAI-compatible `chat/completions`，解析模型返回的 `tool_calls`，通过 `ToolRegistry` 执行工具，并把工具结果回传给模型。
 
-- 当前默认工具只有 `read_file`、`write_file`、`run_command`。
+- 当前默认工具只有 `read_file`、`write_file`、`edit_file`、`run_command`。
 - 当前只有固定系统提示词；尚未实现消息历史压缩、上下文裁剪、检索增强。
 - 当前没有统一 Harness；尚未实现写前确认、危险命令黑名单、命令规则引擎、自动测试、自修复重试。
-- 当前没有 `edit_file`、`grep`、`glob`、`todo_write`。
+- 当前没有 `grep`、`glob`、`todo_write`。
 
 禁止在代码、文档、提示词或 CLI 输出中暗示未实现能力已经存在。尤其禁止声称当前已有写前确认、危险命令拦截、完整沙箱、自验证修复或 TodoWrite。
 
@@ -43,7 +43,7 @@
 
 ### 安全状态
 
-- `read_file` / `write_file` 当前必须只接受非空相对路径，必须拒绝绝对路径和包含 `..` 的路径片段。
+- `read_file` / `write_file` / `edit_file` 当前必须只接受非空相对路径，必须拒绝绝对路径和包含 `..` 的路径片段。
 - `read_file` 必须拒绝二进制文件。
 - `write_file` 当前会覆盖已有文件；在写前确认实现前，禁止把它描述成安全写入。
 - `run_command` 当前只有 `cwd` 和超时保护；禁止把它描述成已具备危险命令拦截。
