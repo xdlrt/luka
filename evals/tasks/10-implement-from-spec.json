@@ -1,0 +1,28 @@
+{
+  "id": "10-implement-from-spec",
+  "description": "Implement a tokenizer from a local spec file and satisfy tests.",
+  "difficulty": "hard",
+  "prompt": "Read SPEC.md and implement tokenizeCommand(input) in src/tokenize.mjs. Export it through src/index.mjs and make the tests pass.",
+  "setup": {
+    "files": {
+      "SPEC.md": "# Command tokenizer spec\n\nImplement tokenizeCommand(input):\n\n- Split on whitespace outside quotes.\n- Preserve text inside double quotes as one token without the quote characters.\n- Ignore repeated whitespace between tokens.\n- Return [] for an empty or whitespace-only input.\n- Throw Error(\"Unclosed quote\") when a double quote is opened but not closed.\n",
+      "src/tokenize.mjs": "export function tokenizeCommand(input) {\n  return input.trim() === \"\" ? [] : input.trim().split(/\\s+/);\n}\n",
+      "src/index.mjs": "export { tokenizeCommand } from \"./tokenize.mjs\";\n",
+      "tests/tokenize.test.mjs": "import assert from \"node:assert\";\nimport { tokenizeCommand } from \"../src/index.mjs\";\n\nassert.deepStrictEqual(tokenizeCommand(\"deploy service --env prod\"), [\"deploy\", \"service\", \"--env\", \"prod\"]);\nassert.deepStrictEqual(tokenizeCommand(\"deploy \\\"billing api\\\" --env prod\"), [\"deploy\", \"billing api\", \"--env\", \"prod\"]);\nassert.deepStrictEqual(tokenizeCommand(\"   \\\"two words\\\"    done   \"), [\"two words\", \"done\"]);\nassert.deepStrictEqual(tokenizeCommand(\"   \"), []);\nassert.throws(() => tokenizeCommand(\"deploy \\\"billing api\"), /Unclosed quote/);\nconsole.log(\"Test Files  1 passed (1)\");\nconsole.log(\"      Tests  5 passed (5)\");\nconsole.log(\"   Duration  0.1s\");\n"
+    }
+  },
+  "testCommand": "node tests/tokenize.test.mjs",
+  "expectations": {
+    "files": [
+      {
+        "path": "src/tokenize.mjs",
+        "contains": ["tokenizeCommand", "Unclosed quote"]
+      },
+      {
+        "path": "src/index.mjs",
+        "contains": ["tokenizeCommand"]
+      }
+    ],
+    "testsPassing": true
+  }
+}

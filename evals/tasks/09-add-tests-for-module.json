@@ -1,0 +1,24 @@
+{
+  "id": "09-add-tests-for-module",
+  "description": "Add focused tests for an existing untested slugify module.",
+  "difficulty": "medium",
+  "prompt": "Add tests for src/slugify.mjs in a new tests/slugify.test.mjs file. Cover lowercasing, whitespace collapsing, special character trimming, and empty input. Keep the existing test command passing.",
+  "setup": {
+    "files": {
+      "package-notes.md": "# Test notes\n\nUse node:assert in .mjs test files. Tests should print the standard summary lines after assertions pass.\n",
+      "src/slugify.mjs": "export function slugify(input) {\n  return input\n    .trim()\n    .toLowerCase()\n    .replace(/[^a-z0-9]+/g, \"-\")\n    .replace(/^-+|-+$/g, \"\");\n}\n",
+      "tests/existing.test.mjs": "import assert from \"node:assert\";\nimport { slugify } from \"../src/slugify.mjs\";\n\nassert.strictEqual(slugify(\"Hello World\"), \"hello-world\");\nconsole.log(\"Test Files  1 passed (1)\");\nconsole.log(\"      Tests  1 passed (1)\");\nconsole.log(\"   Duration  0.1s\");\n",
+      "tests/run-all.mjs": "import \"./existing.test.mjs\";\nimport \"./slugify.test.mjs\";\n"
+    }
+  },
+  "testCommand": "node tests/run-all.mjs",
+  "expectations": {
+    "files": [
+      {
+        "path": "tests/slugify.test.mjs",
+        "contains": ["node:assert", "slugify", "hello-world", "multiple-spaces", "symbols", "strictEqual(slugify(\"\")"]
+      }
+    ],
+    "testsPassing": true
+  }
+}

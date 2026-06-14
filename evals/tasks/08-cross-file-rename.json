@@ -1,0 +1,32 @@
+{
+  "id": "08-cross-file-rename",
+  "description": "Rename a user formatting function across modules and tests while preserving behavior.",
+  "difficulty": "hard",
+  "prompt": "Rename getUserDisplayName to formatUserDisplayName across the project. Keep behavior unchanged and make the test command pass.",
+  "setup": {
+    "files": {
+      "src/user-service.mjs": "export function getUserDisplayName(user) {\n  return `${user.lastName}, ${user.firstName}`;\n}\n\nexport function getUserInitials(user) {\n  return `${user.firstName[0]}${user.lastName[0]}`.toUpperCase();\n}\n",
+      "src/reporting.mjs": "import { getUserDisplayName } from \"./user-service.mjs\";\n\nexport function buildUserReport(user) {\n  return `User: ${getUserDisplayName(user)}`;\n}\n",
+      "src/index.mjs": "export { getUserDisplayName, getUserInitials } from \"./user-service.mjs\";\nexport { buildUserReport } from \"./reporting.mjs\";\n",
+      "tests/users.test.mjs": "import assert from \"node:assert\";\nimport { buildUserReport, formatUserDisplayName, getUserInitials } from \"../src/index.mjs\";\n\nconst user = { firstName: \"Ada\", lastName: \"Lovelace\" };\nassert.strictEqual(formatUserDisplayName(user), \"Lovelace, Ada\");\nassert.strictEqual(getUserInitials(user), \"AL\");\nassert.strictEqual(buildUserReport(user), \"User: Lovelace, Ada\");\nconsole.log(\"Test Files  1 passed (1)\");\nconsole.log(\"      Tests  3 passed (3)\");\nconsole.log(\"   Duration  0.1s\");\n"
+    }
+  },
+  "testCommand": "node tests/users.test.mjs",
+  "expectations": {
+    "files": [
+      {
+        "path": "src/user-service.mjs",
+        "contains": ["formatUserDisplayName"]
+      },
+      {
+        "path": "src/reporting.mjs",
+        "contains": ["formatUserDisplayName"]
+      },
+      {
+        "path": "src/index.mjs",
+        "contains": ["formatUserDisplayName"]
+      }
+    ],
+    "testsPassing": true
+  }
+}

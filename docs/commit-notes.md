@@ -303,3 +303,11 @@
 - Why: P3-W10-T3 要避免 `read_file` 把超大文件完整塞进上下文，同时工具输出里又不能提示模型使用不存在的能力。只做默认截断会降低上下文压力，但模型无法继续精确读取被省略区段；因此本次把大文件截断和真实可用的 `offset`/`limit` 行范围读取一起交付。
 - What: `read_file` 保持 500 行以内原样返回，超过 500 行时默认返回前 100 行、截断提示和后 50 行；工具 schema 新增可选 `offset` 与 `limit`，按 1-based 行号读取指定区段，`limit` 默认 200 且最大 500。P3-W10-T3 checklist 同步标记完成，路径校验和二进制拒绝边界不变。
 - How: 实现把文件内容先按行处理，默认路径只在超过阈值时截断，显式范围读取则跳过默认截断并加一行范围元信息，方便模型知道当前片段对应原文件行号。单测覆盖 500 行边界、501 行截断、提示文本、范围读取、默认 offset/limit、越界空片段、非法参数和 limit 上限。验证方式为 `npm test -- tests/tools/read-file.test.ts tests/tools/registry-integration.test.ts`、`npm run build` 和全量 `npm test`，确认 32 个测试文件和 235 条测试全部通过。
+
+## add p3 multifile eval tasks
+
+- commit: add p3 multifile eval tasks
+- time: 2026-06-14 15:09
+- Why: P2 的 5 个基准任务主要验证单文件读写、简单编辑和自验证闭环，无法覆盖 P3 已新增的 grep/glob 检索、长上下文压缩和多文件导航能力。P3-W10-T4 需要先把任务数据扩展到多文件项目，为后续 W11 的全量 eval 对比提供固定样本。
+- What: 新增 `06-grep-fix` 到 `10-implement-from-spec` 五个 eval 任务，分别覆盖错误文本定位 bug、按既有模式添加函数、跨文件重命名、为未测试模块补测试、按 spec 实现功能；每个任务都提供 3 个以上 setup 文件和 Node 内置测试命令。新增真实任务目录测试，固定 01-10 排序、P3 任务多文件约束和 `testsPassing` 期望；P3-W10-T4 checklist 同步标记完成。
+- How: 继续复用现有 EvalTask JSON schema，不新增 runner 字段或工具调用断言，避免在没有 trace 事件前把“必须调用 grep/glob/压缩”伪装成可验证事实。任务测试全部使用 `.mjs` 和 `node:assert`，不引入新依赖；验证方式为 `npm test -- tests/evals-types.test.ts tests/evals-runner.test.ts tests/evals-tasks.test.ts`、`npm run build`、全量 `npm test` 和 `git diff --check`，确认 33 个测试文件和 238 条测试全部通过。

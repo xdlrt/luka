@@ -1,0 +1,28 @@
+{
+  "id": "07-add-patterned-function",
+  "description": "Add a new formatter by following the style and export pattern of existing functions.",
+  "difficulty": "medium",
+  "prompt": "Add formatDuration(seconds) using the existing formatter style. It should return values like 1h 01m 01s and be exported from src/index.mjs so the tests pass.",
+  "setup": {
+    "files": {
+      "README.md": "# Formatters\n\nExisting formatters keep output compact and deterministic. Add new helpers in src/formatters.mjs and export them through src/index.mjs.\n",
+      "src/formatters.mjs": "export function formatCurrency(cents) {\n  return `$${(cents / 100).toFixed(2)}`;\n}\n\nexport function formatPercent(value) {\n  return `${Math.round(value * 100)}%`;\n}\n",
+      "src/index.mjs": "export { formatCurrency, formatPercent } from \"./formatters.mjs\";\n",
+      "tests/formatters.test.mjs": "import assert from \"node:assert\";\nimport { formatCurrency, formatDuration, formatPercent } from \"../src/index.mjs\";\n\nassert.strictEqual(formatCurrency(1299), \"$12.99\");\nassert.strictEqual(formatPercent(0.42), \"42%\");\nassert.strictEqual(formatDuration(3661), \"1h 01m 01s\");\nassert.strictEqual(formatDuration(65), \"0h 01m 05s\");\nconsole.log(\"Test Files  1 passed (1)\");\nconsole.log(\"      Tests  4 passed (4)\");\nconsole.log(\"   Duration  0.1s\");\n"
+    }
+  },
+  "testCommand": "node tests/formatters.test.mjs",
+  "expectations": {
+    "files": [
+      {
+        "path": "src/formatters.mjs",
+        "contains": ["formatDuration", "padStart"]
+      },
+      {
+        "path": "src/index.mjs",
+        "contains": ["formatDuration"]
+      }
+    ],
+    "testsPassing": true
+  }
+}

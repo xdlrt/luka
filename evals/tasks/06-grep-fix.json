@@ -1,0 +1,24 @@
+{
+  "id": "06-grep-fix",
+  "description": "Use an error code from failing tests to locate and fix a pricing bug across multiple files.",
+  "difficulty": "medium",
+  "prompt": "Fix the pricing bug that causes the test command to fail with ERR_INVALID_DISCOUNT. Use the error text to find the relevant code before editing.",
+  "setup": {
+    "files": {
+      "src/errors.mjs": "export const ERR_INVALID_DISCOUNT = \"ERR_INVALID_DISCOUNT\";\n\nexport class PricingError extends Error {\n  constructor(code, message) {\n    super(message);\n    this.code = code;\n  }\n}\n",
+      "src/cart.mjs": "export function createCart(items) {\n  return {\n    items,\n    subtotal: items.reduce((total, item) => total + item.price * item.quantity, 0),\n  };\n}\n",
+      "src/pricing.mjs": "import { ERR_INVALID_DISCOUNT, PricingError } from \"./errors.mjs\";\n\nexport function applyDiscount(cart, discountRate) {\n  if (discountRate < 0 && discountRate > 1) {\n    throw new PricingError(ERR_INVALID_DISCOUNT, \"discount must be between 0 and 1\");\n  }\n  return cart.subtotal * (1 - discountRate);\n}\n",
+      "tests/pricing.test.mjs": "import assert from \"node:assert\";\nimport { createCart } from \"../src/cart.mjs\";\nimport { applyDiscount } from \"../src/pricing.mjs\";\nimport { ERR_INVALID_DISCOUNT } from \"../src/errors.mjs\";\n\nconst cart = createCart([\n  { price: 20, quantity: 2 },\n  { price: 10, quantity: 1 },\n]);\n\nassert.strictEqual(applyDiscount(cart, 0.2), 40);\nassert.throws(\n  () => applyDiscount(cart, 1.5),\n  (error) => error.code === ERR_INVALID_DISCOUNT\n);\nconsole.log(\"Test Files  1 passed (1)\");\nconsole.log(\"      Tests  2 passed (2)\");\nconsole.log(\"   Duration  0.1s\");\n"
+    }
+  },
+  "testCommand": "node tests/pricing.test.mjs",
+  "expectations": {
+    "files": [
+      {
+        "path": "src/pricing.mjs",
+        "contains": ["discountRate < 0 || discountRate > 1"]
+      }
+    ],
+    "testsPassing": true
+  }
+}
