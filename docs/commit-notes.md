@@ -1,5 +1,13 @@
 # Commit Notes
 
+## docs: add Claude Code learning map
+
+- commit: docs: add Claude Code learning map
+- time: 2026-06-15 14:02
+- Why: 后续要结合 Claude Code 做系统学习，但现有文档只有项目路线图和复盘，缺少一个能长期承载架构主题、源码模块、分析模板和能力边界的学习入口；如果直接零散写分析，容易遗漏 Skill、插件、远程桥接、状态记忆等产品化模块，也容易把 Claude Code 的成熟能力误写成当前项目现状。
+- What: 新增 `docs/claude-code-learning/` 学习目录，建立 architecture/modules/templates 三层结构、Claude Code 顶层模块覆盖矩阵，并先落地 Agentic Loop 与停止条件分析。大纲覆盖主循环、工具协议、上下文、权限、Skill、MCP/LSP/API、插件、IDE/Remote/Server、状态记忆配置、命令/TUI、输入输出体验、Git/GitHub 工作流、可观测和子 Agent，同时明确这些主题与当前 `coding-agent` 已实现能力或计划边界的关系。
+- How: 以 `<claude-code-snapshot>` 作为 Claude Code 参考路径占位，避免文档绑定个人机器路径；按“architecture 回答为什么这样设计、modules 回答模块做什么”的归档原则组织内容，并用负向边界提醒避免夸大当前能力。验证方式为扫描学习目录确认没有本机绝对路径残留，并检查敏感能力只作为未实现边界出现。
+
 ## docs: streamline project docs
 
 - commit: docs: streamline project docs
@@ -380,7 +388,7 @@
 
 - commit: align tui input interactions
 - time: 2026-06-14 22:36
-- Why: 当前 Ink TUI 已经提供基础输入、运行状态和权限确认，但输入框仍停留在尾部追加/删除模型，无法像 claude-code-main 的终端输入一样进行基础光标编辑。为避免把 slash command、历史搜索、模型选择等未要求能力带进当前极简 Agent，本次只对齐现有输入和确认流程的键盘交互。
+- Why: 当前 Ink TUI 已经提供基础输入、运行状态和权限确认，但输入框仍停留在尾部追加/删除模型，无法像 Claude Code 的终端输入一样进行基础光标编辑。为避免把 slash command、历史搜索、模型选择等未要求能力带进当前极简 Agent，本次只对齐现有输入和确认流程的键盘交互。
 - What: TUI 输入现在维护光标位置，支持在光标处插入字符、Left/Right/Home/End、Backspace/Delete，以及 Ctrl+A/E/B/F/U/K/W 等常见终端编辑键；运行中继续锁定普通输入，权限确认提示改为确认式文案并显式支持 Esc 取消。行为边界不变：权限决策仍只有批准/拒绝，真实工具执行仍走 Harness。
 - How: 使用 `inputRef` 与 `cursorOffsetRef` 保持 Ink 输入状态同步，通过局部编辑 helper 统一更新文本和光标，输入行用反色字符渲染 caret，避免引入完整 TextInput 组件或外部状态系统。测试补齐光标插入、删除、Ctrl 编辑、运行中输入忽略和 Esc 拒绝权限；已验证 `npm test -- tests/tui/app.test.tsx tests/tui/permission.test.tsx`、`npm run build`、全量 `npm test` 全部通过。
 
