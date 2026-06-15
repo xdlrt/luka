@@ -1,10 +1,10 @@
-# P7: REPL/TUI 交互升级
+# P13: REPL/TUI 交互升级
 
 > **里程碑**：无参数启动后的 Ink TUI 成为可持续使用的 coding 工作台，支持本地 slash command、运行状态、恢复入口和清晰的运行总结。
 
 ## 任务清单
 
-- [ ] **P7-W17-T1**: 实现 slash command 框架
+- [ ] **P13-W23-T1**: 实现 slash command 框架
 
   **说明**：在 TUI 输入层区分普通用户任务和本地 slash command。首批支持 `/help`、`/clear`、`/status`、`/compact`、`/diff`、`/resume <sessionId>`、`/exit`。Slash command 本地执行，不进入模型 prompt。
 
@@ -20,7 +20,7 @@
 
 ---
 
-- [ ] **P7-W17-T2**: 增强运行状态与工具进度展示
+- [ ] **P13-W23-T2**: 增强运行状态与工具进度展示
 
   **说明**：TUI 明确展示当前阶段：`idle`、`thinking`、`tool_running`、`permission_pending`、`verification_running`、`done`。工具调用展示工具名、摘要、耗时、是否被拒绝。摘要必须复用脱敏逻辑，避免展示敏感参数原文。
 
@@ -36,7 +36,7 @@
 
 ---
 
-- [ ] **P7-W17-T3**: 支持运行中断
+- [ ] **P13-W23-T3**: 支持运行中断
 
   **说明**：Ctrl+C 在运行中优先中断当前 agent run；空闲时退出 TUI。中断应通过 AbortSignal 传递到 LLM 请求、Harness 和长命令执行。被中断的工具返回 cancelled 结果或结束当前 run，不能留下未闭合的 tool call / tool message 配对。
 
@@ -51,7 +51,7 @@
 
 ---
 
-- [ ] **P7-W17-T4**: 统一运行总结
+- [ ] **P13-W23-T4**: 统一运行总结
 
   **说明**：CLI 和 TUI 共用运行总结格式化器。每轮结束展示最终消息、工具调用、TODO、验证结果、session id、是否成功、是否因 `maxTurns` 停止。
 
