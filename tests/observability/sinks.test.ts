@@ -4,6 +4,7 @@ import path from "node:path";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { createAgentEvent } from "../../src/observability/events.js";
 import { HttpFeedbackSink, LocalJsonlSink } from "../../src/observability/sinks.js";
+import { createObservabilitySinks } from "../../src/session.js";
 
 describe("observability sinks", () => {
   let tempDir: string;
@@ -63,5 +64,52 @@ describe("observability sinks", () => {
     await expect(
       sink.write(createAgentEvent("run-1", "SessionStart"))
     ).rejects.toThrow(/HTTP 500/);
+  });
+
+  it("creates an OTel sink only when enabled with an endpoint", () => {
+    const disabled = createObservabilitySinks(
+      {
+        apiKey: "key",
+        baseURL: "https://example.com",
+        model: "model",
+        maxTurns: 1,
+        workingDirectory: tempDir,
+        autoApprove: false,
+        maxRetries: 1,
+        verbose: false,
+        observability: {
+          localDir: ".events",
+          feedback: { enabled: false, timeoutMs: 3000, batchSize: 20 },
+          otel: { enabled: true, serviceName: "coding-agent", timeoutMs: 3000 },
+        },
+      },
+      "run-1"
+    );
+    const enabled = createObservabilitySinks(
+      {
+        apiKey: "key",
+        baseURL: "https://example.com",
+        model: "model",
+        maxTurns: 1,
+        workingDirectory: tempDir,
+        autoApprove: false,
+        maxRetries: 1,
+        verbose: false,
+        observability: {
+          localDir: ".events",
+          feedback: { enabled: false, timeoutMs: 3000, batchSize: 20 },
+          otel: {
+            enabled: true,
+            endpoint: "https://otel.example/v1/traces",
+            serviceName: "coding-agent",
+            timeoutMs: 3000,
+          },
+        },
+      },
+      "run-2"
+    );
+
+    expect(disabled.sinks).toHaveLength(1);
+    expect(enabled.sinks).toHaveLength(2);
   });
 });

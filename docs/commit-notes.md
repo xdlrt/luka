@@ -407,3 +407,11 @@
 - Why: 现有 hook runtime 是项目自定义的扁平事件转发格式，能把事件发给 command/http，但缺少 Claude Code 风格的 matcher、标准 hook input、hook 执行开始/结束证据和 transcript 路径。为了服务可观测场景，需要把 hook 协议对齐 Claude Code 的配置形态，同时保持当前极简 Agent 的主执行边界不被 hook 改写。
 - What: hook 配置改为 `hooks.<EventName>: [{ matcher, hooks }]`，默认读取 `.claude/settings.json`，不再兼容旧的 `agent-hooks.json` 扁平格式；command/http hook 接收 Claude Code 风格 input，包含 session、cwd、transcript、事件名、原始 agent event 和工具摘要。trace 新增 `HookStart` / `HookEnd`，记录 hookId、matcher、target、outcome、耗时、HTTP 状态、exitCode 和脱敏输出；`HookStart` / `HookEnd` / `HookFailure` 不再递归触发 hook。hook 输出只进入观测 trace，不阻断工具执行、不审批权限、不修改工具输入、不向模型注入上下文。
 - How: `HookRuntime` 先按事件和 matcher 生成待执行 hook，再围绕每个 hook emit 开始/结束事件；command hook 捕获 stdout/stderr 并尝试解析 JSON 输出用于审计，http hook 复用 JSON POST sink 并把状态码返回给 hook trace。`createEventRecorder()` 先创建本地 JSONL sink，再把 trace 路径注入 hook input，并在 `SessionStart` 记录 hook 配置摘要而不是完整命令。验证方式为 `npm run build`、定向 `npm test -- tests/observability/hooks.test.ts tests/observability/events.test.ts tests/observability/recorder.test.ts tests/observability/sinks.test.ts tests/config.test.ts tests/index.test.ts tests/agent-loop.test.ts tests/agent-loop-permission.test.ts tests/agent-loop-verification.test.ts`、全量 `npm test` 和最终 `git diff --check`；全量结果为 46 个测试文件、335 条测试全部通过。
+
+## add otel trace exporter
+
+- commit: add otel trace exporter
+- time: 2026-06-15 11:21
+- Why: JSONL trace 已经能服务本地 eval 和复盘，但如果要对齐 Claude Code 的 OpenTelemetry 路径并接入外部观测平台，需要一个标准 OTel trace 出口。首版只导出 traces，不扩展 logs/metrics，避免把持续趋势平台或完整遥测栈误描述成已完成能力。
+- What: 新增基于标准 OpenTelemetry SDK 的 `OtelTraceSink`，把现有 session、LLM、tool、verification 和 hook lifecycle events 映射成 spans，同时保留 JSONL trace 作为 eval 的权威事实来源。配置层新增默认关闭的 `observability.otel`，支持项目自有环境变量和标准 OTLP trace endpoint；CLI session 和 eval runner 复用同一套 sink 组装逻辑，OTel 失败仍只作为观测出口失败处理，不改变 Agent 主流程。
+- How: 复用 `EventSink` 接口而不是改动 `EventRecorder` 事件协议，确保脱敏和截断仍统一发生在 `createAgentEvent()`；span 配对按 turn、FIFO 或 hookId 完成，无法配对的事件降级为 session event。eval 通过覆盖本地 trace 目录继续写入 `evals/results/traces/{runId}`，避免破坏 trace-reader。验证方式为 `npm run build`、配置/observability/eval 定向测试、全量 `npm test`、`npm run eval:mock` 和 `git diff --check`。

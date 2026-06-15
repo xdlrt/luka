@@ -16,6 +16,7 @@ import {
   LocalJsonlSink,
   type EventSink,
 } from "./observability/sinks.js";
+import { OtelTraceSink } from "./observability/otel.js";
 import { createDefaultToolRegistry, type ToolRegistry } from "./tools/index.js";
 import { Harness, type HarnessConfig, type HarnessLike } from "./harness.js";
 import { LLMClient } from "./llm-client.js";
@@ -112,28 +113,7 @@ export async function createEventRecorder(
   hooksConfigPath: string;
 }> {
   const runId = randomUUID();
-  const localSink = new LocalJsonlSink({
-    directory: path.resolve(
-      config.workingDirectory,
-      config.observability.localDir
-    ),
-    runId,
-  });
-  const sinks: EventSink[] = [
-    localSink,
-  ];
-  if (
-    config.observability.feedback.enabled &&
-    config.observability.feedback.url !== undefined
-  ) {
-    sinks.push(
-      new HttpFeedbackSink({
-        url: config.observability.feedback.url,
-        timeoutMs: config.observability.feedback.timeoutMs,
-        batchSize: config.observability.feedback.batchSize,
-      })
-    );
-  }
+  const { localSink, sinks } = createObservabilitySinks(config, runId);
 
   const hooksConfigPath =
     config.hooksConfigPath ??
@@ -170,6 +150,48 @@ export async function createEventRecorder(
     hookSummary: summarizeHookConfig(hookConfig),
     hooksConfigPath,
   };
+}
+
+export function createObservabilitySinks(
+  config: AppConfig,
+  runId: string,
+  options: { localDirectory?: string } = {}
+): { localSink: LocalJsonlSink; sinks: EventSink[] } {
+  const localSink = new LocalJsonlSink({
+    directory:
+      options.localDirectory ??
+      path.resolve(config.workingDirectory, config.observability.localDir),
+    runId,
+  });
+  const sinks: EventSink[] = [
+    localSink,
+  ];
+  if (
+    config.observability.feedback.enabled &&
+    config.observability.feedback.url !== undefined
+  ) {
+    sinks.push(
+      new HttpFeedbackSink({
+        url: config.observability.feedback.url,
+        timeoutMs: config.observability.feedback.timeoutMs,
+        batchSize: config.observability.feedback.batchSize,
+      })
+    );
+  }
+  if (
+    config.observability.otel.enabled &&
+    config.observability.otel.endpoint !== undefined
+  ) {
+    sinks.push(
+      new OtelTraceSink({
+        endpoint: config.observability.otel.endpoint,
+        serviceName: config.observability.otel.serviceName,
+        timeoutMs: config.observability.otel.timeoutMs,
+      })
+    );
+  }
+
+  return { localSink, sinks };
 }
 
 function runAgentLoopWithOptions(

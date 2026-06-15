@@ -17,6 +17,12 @@ const ENV_KEYS = [
   "OBSERVABILITY_FEEDBACK_URL",
   "OBSERVABILITY_FEEDBACK_TIMEOUT_MS",
   "OBSERVABILITY_FEEDBACK_BATCH_SIZE",
+  "OBSERVABILITY_OTEL_ENABLED",
+  "OBSERVABILITY_OTEL_ENDPOINT",
+  "OBSERVABILITY_OTEL_SERVICE_NAME",
+  "OBSERVABILITY_OTEL_TIMEOUT_MS",
+  "OTEL_EXPORTER_OTLP_TRACES_ENDPOINT",
+  "OTEL_EXPORTER_OTLP_ENDPOINT",
 ] as const;
 const DEFAULT_BASE_URL = "https://ark.cn-beijing.volces.com/api/v3";
 
@@ -62,6 +68,12 @@ describe("loadConfig", () => {
         timeoutMs: 3000,
         batchSize: 20,
       },
+      otel: {
+        enabled: false,
+        endpoint: undefined,
+        serviceName: "coding-agent",
+        timeoutMs: 3000,
+      },
     });
   });
 
@@ -88,6 +100,10 @@ describe("loadConfig", () => {
     process.env.OBSERVABILITY_FEEDBACK_URL = "https://feedback.example/events";
     process.env.OBSERVABILITY_FEEDBACK_TIMEOUT_MS = "1000";
     process.env.OBSERVABILITY_FEEDBACK_BATCH_SIZE = "5";
+    process.env.OBSERVABILITY_OTEL_ENABLED = "true";
+    process.env.OBSERVABILITY_OTEL_ENDPOINT = "https://otel.example/v1/traces";
+    process.env.OBSERVABILITY_OTEL_SERVICE_NAME = "agent-test";
+    process.env.OBSERVABILITY_OTEL_TIMEOUT_MS = "2000";
 
     const config = loadConfig();
 
@@ -104,7 +120,33 @@ describe("loadConfig", () => {
         timeoutMs: 1000,
         batchSize: 5,
       },
+      otel: {
+        enabled: true,
+        endpoint: "https://otel.example/v1/traces",
+        serviceName: "agent-test",
+        timeoutMs: 2000,
+      },
     });
+  });
+
+  it("reads standard OTLP trace endpoint environment variables", () => {
+    process.env.ARK_API_KEY = "key-123";
+    process.env.ARK_MODEL = "doubao-test";
+    process.env.OBSERVABILITY_OTEL_ENABLED = "1";
+    process.env.OTEL_EXPORTER_OTLP_ENDPOINT = "https://otel.example/";
+
+    expect(loadConfig().observability.otel).toEqual({
+      enabled: true,
+      endpoint: "https://otel.example/v1/traces",
+      serviceName: "coding-agent",
+      timeoutMs: 3000,
+    });
+
+    process.env.OTEL_EXPORTER_OTLP_TRACES_ENDPOINT =
+      "https://traces.example/v1/traces";
+    expect(loadConfig().observability.otel.endpoint).toBe(
+      "https://traces.example/v1/traces"
+    );
   });
 
   it("throws when ARK_API_KEY is missing", () => {
@@ -143,6 +185,10 @@ describe("loadConfig", () => {
     process.env.OBSERVABILITY_FEEDBACK_TIMEOUT_MS = "1000";
     process.env.OBSERVABILITY_FEEDBACK_BATCH_SIZE = "1.5";
     expect(() => loadConfig()).toThrow(/OBSERVABILITY_FEEDBACK_BATCH_SIZE/);
+
+    process.env.OBSERVABILITY_FEEDBACK_BATCH_SIZE = "5";
+    process.env.OBSERVABILITY_OTEL_TIMEOUT_MS = "0";
+    expect(() => loadConfig()).toThrow(/OBSERVABILITY_OTEL_TIMEOUT_MS/);
   });
 
   it("validates observability override values", () => {
@@ -154,6 +200,7 @@ describe("loadConfig", () => {
         observability: {
           localDir: "",
           feedback: { enabled: false, timeoutMs: 3000, batchSize: 20 },
+          otel: { enabled: false, serviceName: "coding-agent", timeoutMs: 3000 },
         },
       })
     ).toThrow(/observability.localDir/);
@@ -163,9 +210,20 @@ describe("loadConfig", () => {
         observability: {
           localDir: ".events",
           feedback: { enabled: false, timeoutMs: 0, batchSize: 20 },
+          otel: { enabled: false, serviceName: "coding-agent", timeoutMs: 3000 },
         },
       })
     ).toThrow(/observability.feedback.timeoutMs/);
+
+    expect(() =>
+      loadConfig({
+        observability: {
+          localDir: ".events",
+          feedback: { enabled: false, timeoutMs: 3000, batchSize: 20 },
+          otel: { enabled: false, serviceName: "", timeoutMs: 3000 },
+        },
+      })
+    ).toThrow(/observability.otel.serviceName/);
   });
 
   it("lets overrides take precedence over environment", () => {
@@ -192,6 +250,12 @@ describe("loadConfig", () => {
           timeoutMs: 9,
           batchSize: 2,
         },
+        otel: {
+          enabled: true,
+          endpoint: "https://override.example/v1/traces",
+          serviceName: "override-agent",
+          timeoutMs: 10,
+        },
       },
     });
 
@@ -212,6 +276,12 @@ describe("loadConfig", () => {
         url: "https://override.example/events",
         timeoutMs: 9,
         batchSize: 2,
+      },
+      otel: {
+        enabled: true,
+        endpoint: "https://override.example/v1/traces",
+        serviceName: "override-agent",
+        timeoutMs: 10,
       },
     });
   });

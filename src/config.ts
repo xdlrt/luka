@@ -22,6 +22,12 @@ export interface ObservabilityConfig {
     timeoutMs: number;
     batchSize: number;
   };
+  otel: {
+    enabled: boolean;
+    endpoint?: string;
+    serviceName: string;
+    timeoutMs: number;
+  };
 }
 
 const DEFAULT_BASE_URL = "https://ark.cn-beijing.volces.com/api/v3";
@@ -30,6 +36,8 @@ const DEFAULT_MAX_RETRIES = 3;
 const DEFAULT_OBSERVABILITY_DIR = ".coding-agent/observability";
 const DEFAULT_FEEDBACK_TIMEOUT_MS = 3000;
 const DEFAULT_FEEDBACK_BATCH_SIZE = 20;
+const DEFAULT_OTEL_SERVICE_NAME = "coding-agent";
+const DEFAULT_OTEL_TIMEOUT_MS = 3000;
 
 function resolve(
   overrideValue: string | undefined,
@@ -104,6 +112,10 @@ export function loadConfig(overrides: Partial<AppConfig> = {}): AppConfig {
 
 function loadObservabilityConfigFromEnv(): ObservabilityConfig {
   const feedbackUrl = resolve(undefined, process.env.OBSERVABILITY_FEEDBACK_URL);
+  const otelEndpoint =
+    resolve(undefined, process.env.OBSERVABILITY_OTEL_ENDPOINT) ??
+    resolve(undefined, process.env.OTEL_EXPORTER_OTLP_TRACES_ENDPOINT) ??
+    resolveOtlpTracesEndpoint(process.env.OTEL_EXPORTER_OTLP_ENDPOINT);
   return {
     localDir:
       resolve(undefined, process.env.OBSERVABILITY_DIR) ??
@@ -122,6 +134,18 @@ function loadObservabilityConfigFromEnv(): ObservabilityConfig {
           "OBSERVABILITY_FEEDBACK_BATCH_SIZE"
         ) ?? DEFAULT_FEEDBACK_BATCH_SIZE,
     },
+    otel: {
+      enabled: parseBoolean(process.env.OBSERVABILITY_OTEL_ENABLED),
+      endpoint: otelEndpoint,
+      serviceName:
+        resolve(undefined, process.env.OBSERVABILITY_OTEL_SERVICE_NAME) ??
+        DEFAULT_OTEL_SERVICE_NAME,
+      timeoutMs:
+        parseOptionalPositiveInteger(
+          process.env.OBSERVABILITY_OTEL_TIMEOUT_MS,
+          "OBSERVABILITY_OTEL_TIMEOUT_MS"
+        ) ?? DEFAULT_OTEL_TIMEOUT_MS,
+    },
   };
 }
 
@@ -133,6 +157,12 @@ function validateObservabilityConfig(
   }
   if (config.feedback.url !== undefined && config.feedback.url.trim() === "") {
     throw new Error("Invalid observability.feedback.url: expected a non-empty string");
+  }
+  if (config.otel.endpoint !== undefined && config.otel.endpoint.trim() === "") {
+    throw new Error("Invalid observability.otel.endpoint: expected a non-empty string");
+  }
+  if (config.otel.serviceName.trim() === "") {
+    throw new Error("Invalid observability.otel.serviceName: expected a non-empty string");
   }
   return {
     localDir: config.localDir,
@@ -148,7 +178,23 @@ function validateObservabilityConfig(
         "observability.feedback.batchSize"
       ),
     },
+    otel: {
+      enabled: config.otel.enabled,
+      endpoint: config.otel.endpoint,
+      serviceName: config.otel.serviceName,
+      timeoutMs: parsePositiveInteger(
+        config.otel.timeoutMs,
+        "observability.otel.timeoutMs"
+      ),
+    },
   };
+}
+
+function resolveOtlpTracesEndpoint(raw: string | undefined): string | undefined {
+  const endpoint = resolve(undefined, raw);
+  if (endpoint === undefined) return undefined;
+  const trimmed = endpoint.replace(/\/+$/, "");
+  return `${trimmed}/v1/traces`;
 }
 
 function parseOptionalPositiveInteger(
