@@ -82,6 +82,10 @@ asciinema play docs/demo.cast
 | `OBSERVABILITY_FEEDBACK_URL` | 否 | 无 | 配置后启用 HTTP feedback sink。 |
 | `OBSERVABILITY_FEEDBACK_TIMEOUT_MS` | 否 | `3000` | HTTP feedback 单次请求超时，必须是正整数。 |
 | `OBSERVABILITY_FEEDBACK_BATCH_SIZE` | 否 | `20` | HTTP feedback 批量发送条数，必须是正整数。 |
+| `OBSERVABILITY_OTEL_ENABLED` | 否 | `false` | 设置为 `1` 或 `true` 时启用 OpenTelemetry trace exporter。 |
+| `OBSERVABILITY_OTEL_ENDPOINT` | 否 | 无 | OTLP HTTP traces endpoint；也兼容 `OTEL_EXPORTER_OTLP_TRACES_ENDPOINT` 或 `OTEL_EXPORTER_OTLP_ENDPOINT`。 |
+| `OBSERVABILITY_OTEL_SERVICE_NAME` | 否 | `coding-agent` | OTel resource 的 `service.name`。 |
+| `OBSERVABILITY_OTEL_TIMEOUT_MS` | 否 | `3000` | OTel trace flush/export 超时，必须是正整数。 |
 
 | 参数 | 说明 |
 | --- | --- |
@@ -163,7 +167,7 @@ flowchart TD
 
 这个项目已有基础 Harness 控制层，但还不是完整 OS 沙箱或成熟命令安全系统。写入和命令工具默认需要用户确认；`--auto-approve` 会降低人工把关强度，但不会绕过路径边界、命令规则、参数校验或工具错误回传。`run_command` 会拦截递归删除、外部 URL `curl`/`wget`、强制推送、系统路径写入、`sudo`、`chmod 777` 等基础危险模式；命令仍通过 shell 执行，不应把当前规则理解为完整命令安全策略。
 
-工具执行异常会转成 tool 消息回传给模型，除非遇到协议级不可恢复错误。Observability event 会对 payload 做摘要和敏感字段脱敏；hook 和 HTTP feedback 只应接收脱敏后的事件数据。
+工具执行异常会转成 tool 消息回传给模型，除非遇到协议级不可恢复错误。Observability event 会对 payload 做摘要和敏感字段脱敏；hook、HTTP feedback 和 OTel trace exporter 只接收脱敏后的事件数据。OTel 当前只导出 traces，不替代本地 JSONL trace，也不包含 metrics/logs 平台能力。
 
 ## Development
 

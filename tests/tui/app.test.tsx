@@ -24,6 +24,11 @@ const baseConfig: AppConfig = {
       timeoutMs: 3000,
       batchSize: 20,
     },
+    otel: {
+      enabled: false,
+      serviceName: "coding-agent",
+      timeoutMs: 3000,
+    },
   },
 };
 

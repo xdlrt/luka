@@ -15,7 +15,7 @@ import {
   EventRecorder,
   type EventRecorderLike,
 } from "../observability/recorder.js";
-import { LocalJsonlSink } from "../observability/sinks.js";
+import { createObservabilitySinks } from "../session.js";
 import { createDefaultToolRegistry } from "../tools/index.js";
 import { runTests } from "../verification/test-runner.js";
 import { checkRegression, loadBaseline } from "./baseline.js";
@@ -257,18 +257,16 @@ export async function runEvalTask(
 }
 
 function createEvalRecorder(
-  _config: AppConfig,
+  config: AppConfig,
   runId: string,
   tracePath: string
 ): EventRecorderLike {
+  const { sinks } = createObservabilitySinks(config, runId, {
+    localDirectory: path.dirname(tracePath),
+  });
   return new EventRecorder({
     runId,
-    sinks: [
-      new LocalJsonlSink({
-        directory: path.dirname(tracePath),
-        runId,
-      }),
-    ],
+    sinks,
   });
 }
 
@@ -301,6 +299,11 @@ function createEvalConfig(
         enabled: false,
         timeoutMs: 3000,
         batchSize: 20,
+      },
+      otel: {
+        enabled: false,
+        serviceName: "coding-agent",
+        timeoutMs: 3000,
       },
     },
   };
