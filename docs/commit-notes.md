@@ -415,3 +415,11 @@
 - Why: JSONL trace 已经能服务本地 eval 和复盘，但如果要对齐 Claude Code 的 OpenTelemetry 路径并接入外部观测平台，需要一个标准 OTel trace 出口。首版只导出 traces，不扩展 logs/metrics，避免把持续趋势平台或完整遥测栈误描述成已完成能力。
 - What: 新增基于标准 OpenTelemetry SDK 的 `OtelTraceSink`，把现有 session、LLM、tool、verification 和 hook lifecycle events 映射成 spans，同时保留 JSONL trace 作为 eval 的权威事实来源。配置层新增默认关闭的 `observability.otel`，支持项目自有环境变量和标准 OTLP trace endpoint；CLI session 和 eval runner 复用同一套 sink 组装逻辑，OTel 失败仍只作为观测出口失败处理，不改变 Agent 主流程。
 - How: 复用 `EventSink` 接口而不是改动 `EventRecorder` 事件协议，确保脱敏和截断仍统一发生在 `createAgentEvent()`；span 配对按 turn、FIFO 或 hookId 完成，无法配对的事件降级为 session event。eval 通过覆盖本地 trace 目录继续写入 `evals/results/traces/{runId}`，避免破坏 trace-reader。验证方式为 `npm run build`、配置/observability/eval 定向测试、全量 `npm test`、`npm run eval:mock` 和 `git diff --check`。
+
+## reorder learning roadmap
+
+- commit: reorder learning roadmap
+- time: 2026-06-15 13:03
+- Why: P6-P10 后续计划最初按 MVP 产品顺序排列，把 TUI 放在 Diff、MCP、Multi-Agent 和配置治理之前；这对产品体验合理，但不符合当前“优先学习 Claude Code 核心框架”的目标。TUI 会消耗大量交互细节成本，而 runtime 内核更能解释 coding agent 的真实复杂度。
+- What: 将 Diff 与验证闭环前置为 P7，把 TUI 后置为 P13；新增 P10 MCP/插件式工具扩展、P11 多 Agent 编排、P12 配置策略治理三份计划。总执行计划同步更新目录、范围、核心模块、里程碑、目标结构和设计决策，明确新增方向是学习版能力，不实现插件市场、完整 MCP 生态、完整远程 swarm 或企业级策略平台。
+- How: 采用重命名未完成计划文件的方式保持路线编号和学习优先级一致；所有新增 checklist 均保持 `[ ]`，避免误标实现状态。计划中特别强调外部工具仍走 Harness、子 Agent 不污染主消息历史、配置治理不得保存密钥。验证方式为旧链接和旧编号 `rg` 检查、新计划完成状态检查以及 `git diff --check`；本次为纯文档规划调整，未运行代码测试。

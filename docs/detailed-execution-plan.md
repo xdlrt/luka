@@ -11,14 +11,17 @@
 - [P4: 可观测与持续评测 — Hooks + Telemetry + Eval](./plan/p4-continuous-evals.md)
 - [P5: 成作品 — 开源打磨 + 技术文章](./plan/p5-release-writing.md)
 - [P6: 会话持久化与恢复](./plan/p6-session-persistence.md)
-- [P7: REPL/TUI 交互升级](./plan/p7-tui-interaction.md)
+- [P7: 文件 Diff 与验证闭环增强](./plan/p7-diff-verification.md)
 - [P8: 命令安全与权限规则增强](./plan/p8-command-permissions.md)
 - [P9: 工具执行编排升级](./plan/p9-tool-orchestration.md)
-- [P10: 文件 Diff 与验证闭环增强](./plan/p10-diff-verification.md)
+- [P10: MCP 与插件式工具扩展](./plan/p10-mcp-plugin-tools.md)
+- [P11: 多 Agent 与子任务编排](./plan/p11-multi-agent-orchestration.md)
+- [P12: 配置、策略与能力治理](./plan/p12-config-policy-governance.md)
+- [P13: REPL/TUI 交互升级](./plan/p13-tui-interaction.md)
 
 ## 范围
 
-这是一个用于吃透 Coding Agent 核心原理的学习型开源项目，不是 Cursor 复刻。项目范围固定为 TypeScript CLI Agent：不做 GUI、不做多模型适配层、不做插件市场。优先保证核心闭环可运行、可测试、可解释。
+这是一个用于吃透 Coding Agent 核心原理的学习型开源项目，不是 Cursor 复刻。项目范围固定为 TypeScript CLI Agent：不做 GUI、不做完整多模型适配层、不做插件市场、不做完整远程执行平台。后续学习路线优先推进 Agent runtime 内核：会话恢复、diff/验证、命令权限、工具编排、MCP/插件式扩展、多 Agent 和配置治理；TUI 交互升级后置。
 
 ## 核心链路
 
@@ -58,10 +61,13 @@ flowchart TD
 | 7 | Observability & Hooks | 采集生命周期事件，执行可配置 hooks，并把本地 trace 或 HTTP feedback 回流到评测系统 |
 | 8 | Continuous Eval | 基于观测 trace 汇总指标、生成趋势报告，并在能力退化时触发门禁 |
 | 9 | Session Persistence | 保存和恢复消息历史、TODO、工具摘要、验证摘要和压缩边界 |
-| 10 | TUI Interaction | 提供持续 REPL 工作台、slash command、运行状态、中断和总结展示 |
+| 10 | Diff & Verification | 为编辑生成 diff、检测外部修改冲突，并增强验证失败回传 |
 | 11 | Command Permissions | 对命令做语义分类、规则复用、权限提示和危险 prefix 控制 |
 | 12 | Tool Orchestration | 并发执行只读工具、串行写入命令、支持中断和大输出落盘 |
-| 13 | Diff & Verification | 为编辑生成 diff、检测外部修改冲突，并增强验证失败回传 |
+| 13 | MCP / Plugin Tools | 从本地 manifest 或最小 MCP adapter 注册外部工具，但执行仍经过 Harness |
+| 14 | Multi-Agent Orchestration | 支持受控 explorer、worker、verifier 子任务编排和父子 trace |
+| 15 | Config & Policy Governance | 统一配置优先级、workspace trust、能力开关和策略诊断 |
+| 16 | TUI Interaction | 提供持续 REPL 工作台、slash command、运行状态、中断和总结展示 |
 
 ## 里程碑
 
@@ -71,10 +77,13 @@ flowchart TD
 - [x] **P4 里程碑**：Agent 具备可观测事件流、可扩展 hook 机制、数据回流能力和基于观测数据的持续 eval 平台。
 - [ ] **P5 里程碑**：形成可对外发布的开源仓库，并完成技术文章。
 - [ ] **P6 里程碑**：Agent 具备可落盘、可恢复、可继续执行的本地会话。
-- [ ] **P7 里程碑**：TUI 支持 slash command、运行状态、中断和统一运行总结。
+- [ ] **P7 里程碑**：文件编辑具备 diff 摘要、冲突检测和更强验证回传。
 - [ ] **P8 里程碑**：命令权限系统支持语义分类、session/project 规则和更安全的 prefix 控制。
 - [ ] **P9 里程碑**：工具执行支持只读并发、写入串行、中断和大输出 artifact。
-- [ ] **P10 里程碑**：文件编辑具备 diff 摘要、冲突检测和更强验证回传。
+- [ ] **P10 里程碑**：Agent 具备学习版 MCP/插件式工具扩展能力，外部工具仍统一经过 Harness。
+- [ ] **P11 里程碑**：Agent 支持受控 sub-agent 编排，能区分只读探索、串行写入和验证复查。
+- [ ] **P12 里程碑**：Agent 具备统一配置、workspace trust、能力开关和策略诊断框架。
+- [ ] **P13 里程碑**：TUI 支持 slash command、运行状态、中断和统一运行总结。
 
 ---
 
@@ -117,6 +126,10 @@ coding-agent/
 │   │   ├── hooks.ts              # Hook runtime
 │   │   ├── recorder.ts           # EventRecorder
 │   │   └── sinks.ts              # 本地 JSONL 与 HTTP feedback sink
+│   ├── extensions/               # 计划中：manifest 工具与最小 MCP adapter
+│   ├── agents/                   # 计划中：explorer / worker / verifier 子 Agent
+│   ├── settings/                 # 计划中：项目配置与诊断
+│   ├── policy/                   # 计划中：workspace trust 与能力开关
 │   └── verification/
 │       ├── test-runner.ts        # 自动跑测试
 │       ├── format-results.ts     # 测试结果格式化
@@ -167,6 +180,10 @@ coding-agent/
 | 数据回流 | 本地 JSONL + 可选 HTTP feedback | 默认不依赖远端服务，需要接平台时通过配置启用 HTTP 回流 |
 | 持续 eval | 基于观测 trace 汇总 | 普通 CLI 与 eval 共享同一套事件证据，避免 runner 内重复埋点 |
 | 真实 LLM eval | 与 mock eval 分离 | PR 可无密钥校验 hook/trace/report，main 或定时任务有密钥时再运行真实模型 |
+| 学习优先级 | Runtime 内核优先，TUI 后置 | 会话恢复、diff、权限、编排、扩展和策略治理更能帮助理解 Coding Agent 框架；TUI 代码量高，但对内核学习收益较低 |
+| 插件扩展 | 本地 manifest / 最小 MCP adapter | 只学习工具扩展边界，不实现插件市场、远程注册中心或完整 MCP 生态 |
+| 多 Agent | 本地受控 sub-agent | 先学习角色拆分、工具范围和写冲突控制，不实现完整远程 swarm |
+| 策略治理 | 项目配置 + workspace trust + capability gate | 学习配置优先级和能力边界，不声明企业级策略平台或完整 OS 级隔离 |
 
 ---
 
