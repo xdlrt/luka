@@ -439,3 +439,11 @@
 - Why: Claude Code 学习材料已经有入口大纲，但 architecture 和 modules 还缺少成体系的章节内容、可视化表达和可浏览站点；如果继续只用散落 Markdown，读者很难按“跨模块设计问题”和“源码模块职责”两条线建立完整地图，也难以验证 Mermaid 图和路由是否能被文档工具正确渲染。
 - What: 补齐 `docs/claude-code-learning/architecture/` 和 `modules/` 的主题笔记，architecture 聚焦跨模块设计取舍，modules 聚焦类型、接口、执行链路、失败路径和测试证据；所有学习页增加 Mermaid 图示，并新增 Rspress 站点配置、入口页、导航、侧边栏、搜索、Mermaid 渲染和 geek 风全局样式。新增 `docs:dev`、`docs:build`、`docs:preview` 脚本和 Rspress 相关 devDependencies，构建产物输出到被忽略的 `doc_build/claude-code-learning`。
 - How: 以现有 `docs/claude-code-learning/README.md`、`modules/README.md` 和 `module-coverage.md` 为章节清单，逐项映射到实际 Markdown 文件，并用 `<claude-code-snapshot>` 占位保持参考路径不绑定本机。Rspress 接入采用 `@rspress/core` v2，root 指向现有学习目录；Mermaid 用 `rspress-plugin-mermaid` 渲染；`globalStyles` 在 ESM 配置中用 `fileURLToPath(import.meta.url)` 解析绝对路径，避免 Rspress 临时 runtime 把相对 CSS 当成包名。验证方式为 `npm run docs:build`、`npm run build`、本地 `docs:dev` HTTP 200 检查、Mermaid 覆盖扫描、路径/敏感词扫描和 `git diff --check`。
+
+## deploy learning site with pages
+
+- commit: deploy learning site with pages
+- time: 2026-06-15 16:22
+- Why: Rspress 已经能把 `docs/claude-code-learning` 构建成静态站点，但如果只停留在本地预览，学习材料仍无法通过 GitHub Pages 稳定访问。部署链路需要和现有 PR CI 分开，避免文档站点发布影响主 Agent build/test/eval 的职责边界。
+- What: 新增 GitHub Pages workflow，针对 `docs/claude-code-learning`、Rspress 配置和 package 依赖变化触发；PR 上只执行 `npm run docs:build` 校验，push 到 `main` 或手动触发时上传 `doc_build/claude-code-learning` 并使用官方 Pages action 部署。workflow 使用 Node 22，匹配当前 Rspress 2 的 engine 要求。
+- How: 采用 GitHub 官方 `actions/upload-pages-artifact` 和 `actions/deploy-pages`，权限只开放 `contents: read`、`pages: write`、`id-token: write`；构建产物仍保持在 `.gitignore` 的 `doc_build/` 下，不提交静态文件。验证方式为本地 `npm run docs:build`、workflow 路径和权限审查、`git diff --check`。
