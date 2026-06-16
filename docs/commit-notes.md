@@ -455,3 +455,11 @@
 - Why: GitHub Pages 项目站点部署在 `/coding-agent/` 子路径下，Rspress 默认 `base: "/"` 会让 HTML 引用 `/static/...`，导致页面能访问但 CSS/JS 样式资源从域名根路径加载而 404。
 - What: 将 Rspress 配置的 `base` 设置为 `/coding-agent/`，让构建产物中的静态资源和站内链接匹配 `https://xdlrt.github.io/coding-agent/` 这个项目站点路径。
 - How: 只改 Rspress 站点配置，不改变文档内容和 Agent 运行时代码；验证方式为 `npm run docs:build`，并检查生成的 `index.html` 中资源路径包含 `/coding-agent/static/`。
+
+## docs: rename project to luka in readme
+
+- commit: docs: rename project to luka in readme
+- time: 2026-06-16 18:30
+- Why: 远端仓库已改名为 `luka`，README 顶部标题仍是旧仓库名 `coding-agent`，造成仓库名与文档展示不一致；同时希望首屏有更醒目的项目标识。需要在更新命名的同时避免误导，因为 npm 包名和 CLI bin 仍是 `coding-agent`（`package.json` 未改名）。
+- What: 将 README 主标题从 `coding-agent` 改为 `luka`，并在标题下用 ASCII art 拼出 LUKA 字样；新增一行说明区分“仓库名 = luka”与“npm 包名/CLI 命令仍为 coding-agent”。正文中的 `npm start` / `coding-agent` / `npm link` 等命令保持不变，确保文档与 `package.json` 实际包名和 bin 一致，不制造命令与源码的偏差。
+- How: 仅编辑 `README.md` 文档，不触碰运行时代码、配置和测试边界；ASCII art 用 box-drawing 字符放进 `text` 代码块以保证终端和站点渲染对齐。本次为纯文档改动，未运行代码测试；“仓库改名不等于 npm 改名”这一边界在 README 与本复盘中均显式标注，避免后续误以为包名已迁移。
