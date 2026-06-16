@@ -7,6 +7,7 @@ import {
 } from "@opentelemetry/sdk-trace-base";
 import { OTLPTraceExporter } from "@opentelemetry/exporter-trace-otlp-http";
 import { ATTR_SERVICE_NAME } from "@opentelemetry/semantic-conventions";
+import { OTEL_TRACER_SCOPE } from "../brand.js";
 import type { AgentEvent } from "./events.js";
 import { summarizeForEvent } from "./events.js";
 import type { EventSink } from "./sinks.js";
@@ -58,7 +59,7 @@ export class OtelTraceSink implements EventSink {
       forceFlushTimeoutMillis: options.timeoutMs,
     });
     this.provider = provider;
-    this.tracer = provider.getTracer("coding-agent.observability", "1.0.0");
+    this.tracer = provider.getTracer(OTEL_TRACER_SCOPE, "1.0.0");
   }
 
   async write(event: AgentEvent): Promise<void> {

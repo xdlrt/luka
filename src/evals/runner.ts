@@ -10,6 +10,11 @@ import os from "node:os";
 import path from "node:path";
 import { pathToFileURL } from "node:url";
 import { runAgentLoop, type AgentResult } from "../agent-loop.js";
+import {
+  DEFAULT_OBSERVABILITY_DIR,
+  EVAL_TMP_PREFIX,
+  OTEL_SERVICE_NAME,
+} from "../brand.js";
 import { loadConfig, type AppConfig } from "../config.js";
 import {
   EventRecorder,
@@ -164,7 +169,7 @@ export async function runEvalTask(
   } = {}
 ): Promise<EvalTaskResult> {
   const tempDir = await mkdtemp(
-    path.join(os.tmpdir(), `coding-agent-eval-${task.id}-`)
+    path.join(os.tmpdir(), `${EVAL_TMP_PREFIX}${task.id}-`)
   );
   const startedAt = Date.now();
   const attempt = options.attempt ?? 1;
@@ -294,7 +299,7 @@ function createEvalConfig(
     maxRetries: 3,
     verbose: false,
     observability: {
-      localDir: ".coding-agent/observability",
+      localDir: DEFAULT_OBSERVABILITY_DIR,
       feedback: {
         enabled: false,
         timeoutMs: 3000,
@@ -302,7 +307,7 @@ function createEvalConfig(
       },
       otel: {
         enabled: false,
-        serviceName: "coding-agent",
+        serviceName: OTEL_SERVICE_NAME,
         timeoutMs: 3000,
       },
     },

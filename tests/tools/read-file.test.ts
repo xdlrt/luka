@@ -8,7 +8,7 @@ describe("createReadFileTool", () => {
   let tempDir: string;
 
   beforeEach(async () => {
-    tempDir = await mkdtemp(path.join(os.tmpdir(), "coding-agent-read-file-"));
+    tempDir = await mkdtemp(path.join(os.tmpdir(), "luka-read-file-"));
   });
 
   afterEach(async () => {

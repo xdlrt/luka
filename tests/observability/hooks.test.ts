@@ -13,7 +13,7 @@ describe("HookRuntime", () => {
   let tempDir: string;
 
   beforeEach(async () => {
-    tempDir = await mkdtemp(path.join(os.tmpdir(), "coding-agent-hooks-"));
+    tempDir = await mkdtemp(path.join(os.tmpdir(), "luka-hooks-"));
   });
 
   afterEach(async () => {

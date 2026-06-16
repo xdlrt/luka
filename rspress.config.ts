@@ -8,7 +8,7 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url));
 export default defineConfig({
   root: "docs/claude-code-learning",
   outDir: "doc_build/claude-code-learning",
-  base: "/coding-agent/",
+  base: "/luka/",
   globalStyles: path.join(
     __dirname,
     "docs/claude-code-learning/styles/geek.css"
@@ -35,9 +35,40 @@ export default defineConfig({
       { text: "前言", link: "/preface" },
       { text: "导言", link: "/introduction" },
       { text: "正文", link: "/chapters/01-agentic-loop" },
+      { text: "深度篇", link: "/deep-dive/" },
       { text: "附录", link: "/appendix/conclusion" },
     ],
     sidebar: {
+      "/deep-dive/": [
+        {
+          text: "卷首",
+          items: [
+            { text: "封面与目录", link: "/deep-dive/" },
+          ],
+        },
+        {
+          text: "硬核主题",
+          collapsible: true,
+          items: [
+            { text: "第 1 章　查询循环的真实状态机", link: "/deep-dive/chapters/01-query-state-machine" },
+            { text: "第 2 章　工具执行框架全貌", link: "/deep-dive/chapters/02-tool-framework" },
+            { text: "第 3 章　上下文工程与记忆系统", link: "/deep-dive/chapters/03-context-memory" },
+            { text: "第 4 章　Bash 安全与权限分层", link: "/deep-dive/chapters/04-bash-safety-permissions" },
+            { text: "第 5 章　外部协议：MCP / LSP / OAuth", link: "/deep-dive/chapters/05-external-protocols" },
+            { text: "第 6 章　扩展治理：Skill 与插件", link: "/deep-dive/chapters/06-extension-governance" },
+            { text: "第 7 章　多 Agent 编排", link: "/deep-dive/chapters/07-multi-agent" },
+            { text: "第 8 章　桥接、远程与服务端协议", link: "/deep-dive/chapters/08-bridge-remote" },
+            { text: "第 9 章　可观测、成本与遥测", link: "/deep-dive/chapters/09-observability-cost" },
+          ],
+        },
+        {
+          text: "卷尾",
+          items: [
+            { text: "附录 A　关键数据结构速查", link: "/deep-dive/appendix/data-structures" },
+            { text: "附录 B　章节对照", link: "/deep-dive/appendix/chapter-map" },
+          ],
+        },
+      ],
       "/": [
         {
           text: "卷首",

@@ -8,7 +8,7 @@ describe("createEditFileTool", () => {
   let tempDir: string;
 
   beforeEach(async () => {
-    tempDir = await mkdtemp(path.join(os.tmpdir(), "coding-agent-edit-file-"));
+    tempDir = await mkdtemp(path.join(os.tmpdir(), "luka-edit-file-"));
   });
 
   afterEach(async () => {

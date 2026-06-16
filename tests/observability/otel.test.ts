@@ -12,7 +12,7 @@ describe("OtelTraceSink", () => {
     };
     const sink = new OtelTraceSink({
       endpoint: "https://otel.example/v1/traces",
-      serviceName: "coding-agent-test",
+      serviceName: "luka-test",
       timeoutMs: 1000,
       tracer,
       provider,
@@ -49,7 +49,7 @@ describe("OtelTraceSink", () => {
     const tracer = createTracer();
     const sink = new OtelTraceSink({
       endpoint: "https://otel.example/v1/traces",
-      serviceName: "coding-agent-test",
+      serviceName: "luka-test",
       timeoutMs: 1000,
       tracer,
       provider: {

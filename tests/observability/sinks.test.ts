@@ -10,7 +10,7 @@ describe("observability sinks", () => {
   let tempDir: string;
 
   beforeEach(async () => {
-    tempDir = await mkdtemp(path.join(os.tmpdir(), "coding-agent-sinks-"));
+    tempDir = await mkdtemp(path.join(os.tmpdir(), "luka-sinks-"));
   });
 
   afterEach(async () => {
@@ -80,7 +80,7 @@ describe("observability sinks", () => {
         observability: {
           localDir: ".events",
           feedback: { enabled: false, timeoutMs: 3000, batchSize: 20 },
-          otel: { enabled: true, serviceName: "coding-agent", timeoutMs: 3000 },
+          otel: { enabled: true, serviceName: "luka", timeoutMs: 3000 },
         },
       },
       "run-1"
@@ -101,7 +101,7 @@ describe("observability sinks", () => {
           otel: {
             enabled: true,
             endpoint: "https://otel.example/v1/traces",
-            serviceName: "coding-agent",
+            serviceName: "luka",
             timeoutMs: 3000,
           },
         },

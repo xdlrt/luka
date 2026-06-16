@@ -1,5 +1,6 @@
 import React, { useCallback, useMemo, useRef, useState } from "react";
 import { Box, Text, useApp, useInput } from "ink";
+import { TUI_TITLE, TUI_WELCOME } from "../brand.js";
 import type { AppConfig } from "../config.js";
 import { createLogger } from "../logger.js";
 import type { PermissionChecker, HarnessConfig } from "../harness.js";
@@ -282,7 +283,7 @@ export function TuiApp({
   return (
     <Box flexDirection="column">
       <Box borderStyle="round" borderColor="cyan" paddingX={1}>
-        <Text bold>coding-agent</Text>
+        <Text bold>{TUI_TITLE}</Text>
         <Text> | </Text>
         <Text>{statusText}</Text>
         <Text> | model: {config.model}</Text>
@@ -334,12 +335,12 @@ function StartupScreen({
     >
       <Text>
         <Text color="cyan" bold>
-          coding-agent
+          {TUI_TITLE}
         </Text>
         <Text color="gray"> local TUI</Text>
       </Text>
       <Box marginTop={1}>
-        <Text bold>Welcome to coding-agent</Text>
+        <Text bold>{TUI_WELCOME}</Text>
       </Box>
       <Box flexDirection="column" marginTop={1}>
         <Text color="cyan">{"     /\\"}</Text>

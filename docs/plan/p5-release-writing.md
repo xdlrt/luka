@@ -38,7 +38,7 @@
   **说明**：配置 `package.json`：`"bin"` 字段指向编译后的 CLI、`"files"` 字段限定发布内容、`"engines"` 要求 Node >= 20。入口文件添加 shebang。本地验证 `npx .` 正常运行。
 
   **验收标准**：
-  - `npm link` 后 `coding-agent "修复这个 bug"` 可从任何目录运行
+  - `npm link` 后 `luka "修复这个 bug"` 可从任何目录运行
   - `package.json` 中 `bin`、`files`、`engines`、`"type": "module"` 正确
   - 入口文件有 `#!/usr/bin/env node`
   - `npm pack` 产出的 tarball 纯净

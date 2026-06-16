@@ -8,7 +8,7 @@ describe("createWriteFileTool", () => {
   let tempDir: string;
 
   beforeEach(async () => {
-    tempDir = await mkdtemp(path.join(os.tmpdir(), "coding-agent-write-file-"));
+    tempDir = await mkdtemp(path.join(os.tmpdir(), "luka-write-file-"));
   });
 
   afterEach(async () => {

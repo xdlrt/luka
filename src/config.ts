@@ -1,4 +1,8 @@
 import { config as loadDotenv } from "dotenv";
+import {
+  DEFAULT_OBSERVABILITY_DIR,
+  OTEL_SERVICE_NAME as DEFAULT_OTEL_SERVICE_NAME,
+} from "./brand.js";
 
 export interface AppConfig {
   apiKey: string;
@@ -33,10 +37,8 @@ export interface ObservabilityConfig {
 const DEFAULT_BASE_URL = "https://ark.cn-beijing.volces.com/api/v3";
 const DEFAULT_MAX_TURNS = 20;
 const DEFAULT_MAX_RETRIES = 3;
-const DEFAULT_OBSERVABILITY_DIR = ".coding-agent/observability";
 const DEFAULT_FEEDBACK_TIMEOUT_MS = 3000;
 const DEFAULT_FEEDBACK_BATCH_SIZE = 20;
-const DEFAULT_OTEL_SERVICE_NAME = "coding-agent";
 const DEFAULT_OTEL_TIMEOUT_MS = 3000;
 
 function resolve(

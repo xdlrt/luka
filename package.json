@@ -1,11 +1,11 @@
 {
-  "name": "coding-agent",
+  "name": "luka",
   "version": "0.1.0",
   "description": "Minimal coding agent built with TypeScript and an OpenAI-compatible (Volcengine Ark) API",
   "type": "module",
   "main": "dist/index.js",
   "bin": {
-    "coding-agent": "dist/index.js"
+    "luka": "dist/index.js"
   },
   "files": [
     "dist",

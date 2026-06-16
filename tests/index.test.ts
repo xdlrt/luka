@@ -5,6 +5,10 @@ import { pathToFileURL } from "node:url";
 import { describe, expect, it, vi } from "vitest";
 import packageJson from "../package.json" with { type: "json" };
 import {
+  DEFAULT_OBSERVABILITY_DIR,
+  OTEL_SERVICE_NAME,
+} from "../src/brand.js";
+import {
   handleUserInput,
   isCliEntrypoint,
   parseCliArgs,
@@ -23,7 +27,7 @@ const baseConfig: AppConfig = {
   maxRetries: 3,
   verbose: false,
   observability: {
-    localDir: ".coding-agent/observability",
+    localDir: DEFAULT_OBSERVABILITY_DIR,
     feedback: {
       enabled: false,
       timeoutMs: 3000,
@@ -31,7 +35,7 @@ const baseConfig: AppConfig = {
     },
     otel: {
       enabled: false,
-      serviceName: "coding-agent",
+      serviceName: OTEL_SERVICE_NAME,
       timeoutMs: 3000,
     },
   },
@@ -161,7 +165,7 @@ describe("parseCliArgs", () => {
 
 describe("isCliEntrypoint", () => {
   it("matches direct script execution", () => {
-    const dir = mkdtempSync(path.join(tmpdir(), "coding-agent-entry-"));
+    const dir = mkdtempSync(path.join(tmpdir(), "luka-entry-"));
     const script = path.join(dir, "index.js");
     writeFileSync(script, "#!/usr/bin/env node\n");
 
@@ -169,9 +173,9 @@ describe("isCliEntrypoint", () => {
   });
 
   it("matches npm bin symlinks to the built entrypoint", () => {
-    const dir = mkdtempSync(path.join(tmpdir(), "coding-agent-entry-"));
+    const dir = mkdtempSync(path.join(tmpdir(), "luka-entry-"));
     const script = path.join(dir, "index.js");
-    const link = path.join(dir, "coding-agent");
+    const link = path.join(dir, "luka");
     writeFileSync(script, "#!/usr/bin/env node\n");
     symlinkSync(script, link);
 
@@ -179,7 +183,7 @@ describe("isCliEntrypoint", () => {
   });
 
   it("does not match imports from another entrypoint", () => {
-    const dir = mkdtempSync(path.join(tmpdir(), "coding-agent-entry-"));
+    const dir = mkdtempSync(path.join(tmpdir(), "luka-entry-"));
     const script = path.join(dir, "index.js");
     const other = path.join(dir, "other.js");
     writeFileSync(script, "#!/usr/bin/env node\n");
@@ -192,7 +196,7 @@ describe("isCliEntrypoint", () => {
 describe("package scripts", () => {
   it("exposes the built CLI as a package binary", () => {
     expect(packageJson.bin).toEqual({
-      "coding-agent": "dist/index.js",
+      luka: "dist/index.js",
     });
   });
 

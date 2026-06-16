@@ -11,8 +11,6 @@
 
 一个用 TypeScript 从零实现的极简 Coding Agent，跑通 CLI/TUI、OpenAI-compatible `tool_calls`、Harness 工具执行、编辑后验证和结果回传的核心闭环。
 
-> 仓库名为 `luka`；npm 包名与 CLI 命令仍为 `coding-agent`（见 `package.json`）。
-
 当前实现适合学习、验证和架构拆解；不是完整 IDE Agent，不提供 GUI、插件市场、完整 OS 级沙箱、多模型适配层或真正的检索增强 RAG。
 
 ## Quick Start
@@ -51,7 +49,7 @@ npm start
 
 ```bash
 npm link
-coding-agent "阅读 README.md 并总结当前能力"
+luka "阅读 README.md 并总结当前能力"
 npm pack --dry-run
 ```
 
@@ -89,13 +87,13 @@ asciinema play docs/demo.cast
 | `MAX_RETRIES` | 否 | `3` | 自动验证失败后的最大重试次数，必须是正整数。 |
 | `VERBOSE` | 否 | `false` | 设置为 `1` 或 `true` 时输出更详细日志。 |
 | `HOOKS_CONFIG` | 否 | `.claude/settings.json` | Claude Code 风格 hook 配置文件路径；CLI `--hooks-config` 优先级更高。 |
-| `OBSERVABILITY_DIR` | 否 | `.coding-agent/observability` | CLI trace JSONL 输出目录。 |
+| `OBSERVABILITY_DIR` | 否 | `.luka/observability` | CLI trace JSONL 输出目录。 |
 | `OBSERVABILITY_FEEDBACK_URL` | 否 | 无 | 配置后启用 HTTP feedback sink。 |
 | `OBSERVABILITY_FEEDBACK_TIMEOUT_MS` | 否 | `3000` | HTTP feedback 单次请求超时，必须是正整数。 |
 | `OBSERVABILITY_FEEDBACK_BATCH_SIZE` | 否 | `20` | HTTP feedback 批量发送条数，必须是正整数。 |
 | `OBSERVABILITY_OTEL_ENABLED` | 否 | `false` | 设置为 `1` 或 `true` 时启用 OpenTelemetry trace exporter。 |
 | `OBSERVABILITY_OTEL_ENDPOINT` | 否 | 无 | OTLP HTTP traces endpoint；也兼容 `OTEL_EXPORTER_OTLP_TRACES_ENDPOINT` 或 `OTEL_EXPORTER_OTLP_ENDPOINT`。 |
-| `OBSERVABILITY_OTEL_SERVICE_NAME` | 否 | `coding-agent` | OTel resource 的 `service.name`。 |
+| `OBSERVABILITY_OTEL_SERVICE_NAME` | 否 | `luka` | OTel resource 的 `service.name`。 |
 | `OBSERVABILITY_OTEL_TIMEOUT_MS` | 否 | `3000` | OTel trace flush/export 超时，必须是正整数。 |
 
 | 参数 | 说明 |

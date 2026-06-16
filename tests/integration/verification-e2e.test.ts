@@ -3,6 +3,10 @@ import os from "node:os";
 import path from "node:path";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { runAgentLoop } from "../../src/agent-loop.js";
+import {
+  DEFAULT_OBSERVABILITY_DIR,
+  OTEL_SERVICE_NAME,
+} from "../../src/brand.js";
 import type { AppConfig } from "../../src/config.js";
 import type { LLMClient } from "../../src/llm-client.js";
 import { createDefaultToolRegistry } from "../../src/tools/index.js";
@@ -37,7 +41,7 @@ const baseConfig: AppConfig = {
   maxRetries: 3,
   verbose: false,
   observability: {
-    localDir: ".coding-agent/observability",
+    localDir: DEFAULT_OBSERVABILITY_DIR,
     feedback: {
       enabled: false,
       timeoutMs: 3000,
@@ -45,7 +49,7 @@ const baseConfig: AppConfig = {
     },
     otel: {
       enabled: false,
-      serviceName: "coding-agent",
+      serviceName: OTEL_SERVICE_NAME,
       timeoutMs: 3000,
     },
   },
@@ -84,7 +88,7 @@ describe("W6 verification end-to-end", () => {
   let tempDir: string;
 
   beforeEach(async () => {
-    tempDir = await mkdtemp(path.join(os.tmpdir(), "coding-agent-w6-e2e-"));
+    tempDir = await mkdtemp(path.join(os.tmpdir(), "luka-w6-e2e-"));
     await writeFile(path.join(tempDir, "add.mjs"), buggyAdd, "utf8");
     await writeFile(path.join(tempDir, "check.mjs"), checkScript, "utf8");
   });

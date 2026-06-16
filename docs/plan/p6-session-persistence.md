@@ -6,7 +6,7 @@
 
 - [ ] **P6-W16-T1**: 定义 Session 存储模型
 
-  **说明**：新增会话存储模型，默认写入 `.coding-agent/sessions/{sessionId}.json`。会话文件保存消息历史、TODO 状态、工具调用摘要、验证结果摘要、配置快照和 compact boundary。配置快照只能记录非敏感运行参数。
+  **说明**：新增会话存储模型，默认写入 `.luka/sessions/{sessionId}.json`。会话文件保存消息历史、TODO 状态、工具调用摘要、验证结果摘要、配置快照和 compact boundary。配置快照只能记录非敏感运行参数。
 
   **验收标准**：
   - 会话文件包含 `schemaVersion`、`sessionId`、`createdAt`、`updatedAt`、`workingDirectory`、`model`、`messages`、`todos`、`toolSummaries`、`verificationSummaries`、`compactBoundaries`
