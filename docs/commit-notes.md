@@ -1,5 +1,13 @@
 # Commit Notes
 
+## docs: restructure learning site into a publishable book
+
+- commit: docs: restructure learning site into a publishable book
+- time: 2026-06-16 15:35
+- Why: 原 `docs/claude-code-learning/` 是面向仓库内部的研究笔记，`architecture/`（14 篇按设计问题）和 `modules/`（15 篇按源码模块）两套主题高度重叠、几乎一一对应，且每篇都深度绑定「coding-agent 当前实现对比 / 可借鉴 / 不照搬 / 参考文件路径」。这种结构服务查漏补缺，却不适合线性阅读，也无法作为一本可出版的书独立成立。目标是用资深编辑视角重组成一本面向通用技术读者的书，与当前实现彻底解耦。
+- What: 把 29 篇重叠笔记合并成单一主线的 14 章正文，按 6 个部分组织（核心闭环、权限安全、扩展协作、交互工作流、状态可观测、连接万物）；新增卷首（封面目录、前言、导言）与卷尾（结语、术语表、模块地图、延伸阅读）出版件。全书完全剥离 coding-agent 对比，纯讲 Claude Code，对推断处统一标注「（基于公开行为推断）」。删除旧的 `architecture/`、`modules/`、`templates/`、根 `README.md` 和 `module-coverage.md`（模块地图内容下沉为附录 B）。重排 `rspress.config.ts` 的 nav 与 sidebar 为「卷首→六部分→卷尾」线性结构，站点标题改为《拆解 Claude Code》。
+- How: 先一次性读取全部 29 篇素材建立「旧文件→新章节」映射，再按统一科普骨架（场景开场→核心问题→设计原理融合 why/how→关键场景→设计权衡→本章小结）逐章改写，保留原有 Mermaid 流程图与真实场景，删去所有三态口径、对比段落、`<claude-code-snapshot>` 占位和 `docs/plan` 引用。把贯穿各章的设计主线（硬信号判断、代码级安全、事实高于转述、协议配对、克制、诚实）收拢进结语。验证用 `npm run docs:build` 构建通过（21 页全生成、构建产物无残留旧页面），并用关键词全文检索确认无 `claude-code-snapshot`、`docs/plan`、`/architecture/`、`/modules/`、对比段落等残留。
+
 ## docs: add Claude Code learning map
 
 - commit: docs: add Claude Code learning map
