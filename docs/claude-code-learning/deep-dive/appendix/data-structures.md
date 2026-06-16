@@ -2,7 +2,7 @@
 
 本附录汇总深度册正文里反复出现的结构，按章节归类，便于查阅。除明确标注来源路径的之外，所有结构都是**阐释性重构**，用于表达机制，不是任何专有源码的逐字摘录；凡涉及 Claude Code 的部分均为基于一份来源未经核实的源码快照的推断。带 `// src/...` 路径标注的，来自本仓库可运行的最小实现。
 
-## 第 1 章　Query 状态机
+## 第 1 章　Query 状态机（首次出现：第 1 章）
 
 ```typescript
 // 阐释性重构
@@ -57,7 +57,7 @@ type TokenBudgetDecision =
       diminishingReturns: boolean; durationMs: number } }
 ```
 
-## 第 2 章　工具框架
+## 第 2 章　工具框架（首次出现：第 2 章）
 
 ```typescript
 // 阐释性重构——生产级重型工具接口（摘其要）
@@ -98,7 +98,7 @@ export interface ToolDefinition {
 // 给模型的菜单 ChatToolDefinition 只含 { type, function: { name, description, parameters } }
 ```
 
-## 第 3 章　上下文与压缩
+## 第 3 章　上下文与压缩（首次出现：第 3 章）
 
 ```typescript
 // 阐释性重构——压缩阈值常量与预警梯度
@@ -127,7 +127,7 @@ type AutoCompactTrackingState = {
 
 压缩摘要九段式：Primary Request / Key Technical Concepts / Files and Code / Errors and fixes / Problem Solving / All user messages / Pending Tasks / Current Work / Optional Next Step（`<analysis>` 草稿落地前剥离）。
 
-## 第 4 章　Bash 安全与权限
+## 第 4 章　Bash 安全与权限（首次出现：第 4 章）
 
 ```typescript
 // 阐释性重构——tree-sitter 分析产出
@@ -161,7 +161,8 @@ type PermissionMode =
   | 'default' | 'acceptEdits' | 'bypassPermissions' | 'dontAsk' | 'plan'  // 外部
   | 'auto' | 'bubble'                                                      // 内部
 
-type PermissionDecision =
+// 阐释性的权限裁决形态——与最小实现的 PermissionDecision（{ approved } 形态）不同名同义
+type PermissionOutcome =
   | { behavior: 'allow'; reason: string; metadata?: PermissionMetadata }
   | { behavior: 'deny'; reason: string; metadata?: PermissionMetadata }
   | { behavior: 'ask'; prompt: PermissionPrompt; metadata?: PermissionMetadata }
@@ -174,7 +175,7 @@ export function checkPathInSandbox(workingDirectory: string, inputPath: unknown)
 }
 ```
 
-## 第 5 章　外部协议
+## 第 5 章　外部协议（首次出现：第 5 章）
 
 ```typescript
 // 阐释性重构——退避重试（BASE_DELAY_MS=500，封顶 32s，jitter 0~25%）
@@ -200,7 +201,7 @@ type ServiceError =
 // 重试还取决于 querySource：前台来源重试，后台来源（标题/分类器）立刻认输
 ```
 
-## 第 6 章　扩展治理
+## 第 6 章　扩展治理（首次出现：第 6 章）
 
 ```typescript
 // 阐释性重构——Skill frontmatter 契约
@@ -235,7 +236,7 @@ type PluginComponent = 'commands' | 'agents' | 'skills' | 'hooks' | 'output-styl
 // 加载顺序：路径穿越检查 → schema 校验 → 版本/策略/blocklist → 信任 → 按出口加载
 ```
 
-## 第 7 章　多 Agent
+## 第 7 章　多 Agent（首次出现：第 7 章）
 
 ```typescript
 // 阐释性重构——子 Agent 规格与运行句柄
@@ -251,7 +252,7 @@ type SubAgentSpec = {
 type ChildRunHandle = {
   runId: string; agentId: string
   controller: AbortController         // 异步子 Agent 拿独立未链接的 controller
-  status: 'running' | 'completed' | 'failed' | 'cancelled'
+  status: 'running' | 'completed' | 'failed' | 'killed'
   result?: AgentSummary
 }
 
@@ -266,7 +267,7 @@ type AgentSummary = {
 
 Task 后端：LocalAgentTask / RemoteAgentTask / InProcessTeammateTask / LocalShellTask / DreamTask，共享抽象但权限、取消、恢复语义各异。
 
-## 第 8 章　桥接协议
+## 第 8 章　桥接协议（首次出现：第 8 章）
 
 ```typescript
 // 阐释性重构——bridge 入站/出站消息
@@ -274,7 +275,7 @@ type BridgeInbound =
   | { type: 'create_session'; cwd: string; metadata: ClientMetadata }
   | { type: 'resume_session'; sessionId: string }
   | { type: 'user_message'; sessionId: string; content: string; attachments?: Attachment[] }
-  | { type: 'permission_response'; requestId: string; decision: PermissionDecision }
+  | { type: 'permission_response'; requestId: string; decision: PermissionOutcome }
   | { type: 'cancel'; sessionId: string; reason?: string }
 
 type BridgeOutbound =
@@ -301,7 +302,7 @@ type RemoteSessionState =
   | { status: 'closed'; terminal: Terminal['reason'] }
 ```
 
-## 第 9 章　可观测
+## 第 9 章　可观测（首次出现：第 9 章）
 
 ```typescript
 // src/observability/events.ts（真实代码）——事件 schema 与脱敏

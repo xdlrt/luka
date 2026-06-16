@@ -2,6 +2,9 @@
 
 > 对应《拆解 Claude Code》第 8 章。
 
+**独立阅读建议**：本章可独立阅读，把子 Agent 理解成「有独立历史、独立循环、独立工具范围的嵌套会话」即可。
+**联读建议**：与第 1 章（子 Agent 一律不续跑）、第 4 章（`allowedTools` 权限作用域）、第 8 章（`remote_agent` 往外延伸）连读。
+
 ## 前情提要
 
 科普书里说过：子 Agent 不是普通工具，它是一个有独立历史、独立循环、独立工具范围的嵌套会话。主 Agent 不该继承子 Agent 的完整过程，只接收摘要、证据和产物引用。它还给了一条很反直觉的纪律——主 Agent 启动子任务后「不要偷看、不要抢答」，因为它此刻确实不知道子任务发现了什么。
@@ -16,9 +19,19 @@
 - 子 Agent 的同步 / 异步 / 中断语义如何分叉？为什么异步子 Agent 要拿一个「未链接」的 AbortController？
 - Task 为什么是一个多后端判别联合，而 worktree 隔离为什么是并发写的真实手段？
 
+## 术语起步
+
+- **fork**：省略 `subagent_type` 的子 Agent，继承父的完整对话上下文与系统提示词，像「父进程的分身」。
+- **prompt cache**：靠逐字节相同的请求前缀复用模型缓存；改一个字节就失效，故 fork 要 byte-exact 对齐。
+- **`allowedTools`**：写进运行时权限上下文的作用域规则（替换子层 session 规则、保留 cliArg），不是提示词。
+- **worktree**：`isolation: "worktree"` 给子 Agent 一份独立 git 工作副本，是并发写隔离的真实手段。
+- **判别联合（Task）**：local/remote/teammate/shell/dream 等多后端共享抽象，但权限、取消、恢复语义各异。
+
 ## AgentTool：工具外壳里裹着一整个 query loop
 
 从主 Agent 视角，启动子 Agent 和调用 `read_file` 没有区别——都是一个 `tool_use` 块，带一段 JSON 参数。但 AgentTool 的 `execute` 内部不会去读文件或跑命令，而是构造一份子上下文、再驱动一轮 `query()`：
+
+> 证据标签：本章 `// src/...` 路径标注的代码块是 **[本仓库真实代码]**；讲 Claude Code 快照 fork/allowedTools/Task 的逻辑与结构是 **[快照推断]**；归纳出来的类型签名、并发草案是 **[阐释性重构]**。下面这段属于 **[阐释性重构]**。
 
 ```typescript
 // 阐释性重构——AgentTool 内部启动嵌套 query loop，非逐字源码
@@ -129,7 +142,7 @@ if (allowedTools !== undefined) {
 
 第 1 章讲过 LLM 协议的铁律：每个 `tool_use` 必须有配对的 `tool_result`，否则 API 报错。fork 要继承父的对话切片，而父的最后一条 assistant 消息里，可能正好有一个**刚发出、还没拿到结果**的 tool_use（fork 本身往往就是在这条消息里触发的）。如果照搬进子上下文，子 Agent 第一次请求就会带着孤儿 tool_use 撞墙。
 
-`filterIncompleteToolCalls` 就是这道闸门，逻辑朴素但关键（这是真实函数，结构改写转述）：
+`filterIncompleteToolCalls` 就是这道闸门，逻辑朴素但关键（基于快照中可见的同名函数，结构改写转述）：
 
 ```typescript
 // 阐释性重构——过滤掉「有 tool_use 但无配对 tool_result」的 assistant 消息
@@ -188,7 +201,7 @@ type ChildRunHandle = {
 「子 Agent」只是 Task 的一种。生产级里 Task 是一个带类型前缀的判别联合，每种后端有不同的执行位置、权限和取消语义：
 
 ```typescript
-// 阐释性重构——Task 类型联合与状态机，命名为真实粒度
+// 阐释性重构——Task 类型联合与状态机，命名贴合快照粒度
 type TaskType =
   | 'local_bash'          // 本地 shell 任务
   | 'local_agent'         // 本进程子 Agent
