@@ -1,6 +1,6 @@
 ---
 name: Feature request
-about: Suggest a focused improvement for coding-agent
+about: Suggest a focused improvement for luka
 title: "[Feature]: "
 labels: enhancement
 assignees: ""

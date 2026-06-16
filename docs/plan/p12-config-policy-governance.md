@@ -6,7 +6,7 @@
 
 - [ ] **P12-W22-T1**: 定义项目配置文件 schema
 
-  **说明**：新增 `.coding-agent/config.json`，用于保存非敏感项目配置。配置文件支持工具开关、hooks 路径、observability 目录、权限规则路径和扩展工具配置路径。环境变量和 CLI flag 仍具有更高优先级。
+  **说明**：新增 `.luka/config.json`，用于保存非敏感项目配置。配置文件支持工具开关、hooks 路径、observability 目录、权限规则路径和扩展工具配置路径。环境变量和 CLI flag 仍具有更高优先级。
 
   **验收标准**：
   - schema 包含 `schemaVersion` 和明确的配置分区
@@ -39,7 +39,7 @@
   **说明**：新增工作目录 trust 状态。未 trust 的 workspace 默认只允许 read 工具和本地文档读取；写入、命令、外部工具和 hooks 需要明确 trust 或用户单次确认。
 
   **验收标准**：
-  - trust 状态保存到 `.coding-agent/trust.json` 或用户指定路径
+  - trust 状态保存到 `.luka/trust.json` 或用户指定路径
   - 未 trust 时 write/command/extensions/hooks 默认受限
   - trust 文件不包含环境变量或密钥
   - CLI/TUI 能显示当前 trust 状态

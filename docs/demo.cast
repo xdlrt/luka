@@ -1,5 +1,5 @@
 {"version":2,"width":100,"height":28,"timestamp":1781434800,"env":{"SHELL":"/bin/zsh","TERM":"xterm-256color"}}
-[0.0,"o","$ coding-agent --test-command \"npm test\" \"修复 failing test\"\r\n"]
+[0.0,"o","$ luka --test-command \"npm test\" \"修复 failing test\"\r\n"]
 [1.0,"o","[agent] todo_write\r\n"]
 [1.2,"o","Progress: 0/3 completed\r\n[~] Inspect failing test\r\n[ ] Patch implementation\r\n[ ] Run verification\r\n"]
 [2.0,"o","[agent] read_file tests/math.test.ts\r\n"]

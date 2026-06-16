@@ -2,7 +2,7 @@
 .env.*
 .git
 .github
-.coding-agent
+.luka
 coverage
 dist/**/*.map
 docs/plan

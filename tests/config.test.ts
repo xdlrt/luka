@@ -2,6 +2,10 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 vi.mock("dotenv", () => ({ config: () => ({ parsed: {} }) }));
 
+import {
+  DEFAULT_OBSERVABILITY_DIR,
+  OTEL_SERVICE_NAME,
+} from "../src/brand.js";
 import { loadConfig } from "../src/config.js";
 
 const ENV_KEYS = [
@@ -61,7 +65,7 @@ describe("loadConfig", () => {
     expect(config.verbose).toBe(false);
     expect(config.hooksConfigPath).toBeUndefined();
     expect(config.observability).toEqual({
-      localDir: ".coding-agent/observability",
+      localDir: DEFAULT_OBSERVABILITY_DIR,
       feedback: {
         enabled: false,
         url: undefined,
@@ -71,7 +75,7 @@ describe("loadConfig", () => {
       otel: {
         enabled: false,
         endpoint: undefined,
-        serviceName: "coding-agent",
+        serviceName: OTEL_SERVICE_NAME,
         timeoutMs: 3000,
       },
     });
@@ -138,7 +142,7 @@ describe("loadConfig", () => {
     expect(loadConfig().observability.otel).toEqual({
       enabled: true,
       endpoint: "https://otel.example/v1/traces",
-      serviceName: "coding-agent",
+      serviceName: OTEL_SERVICE_NAME,
       timeoutMs: 3000,
     });
 
@@ -200,7 +204,7 @@ describe("loadConfig", () => {
         observability: {
           localDir: "",
           feedback: { enabled: false, timeoutMs: 3000, batchSize: 20 },
-          otel: { enabled: false, serviceName: "coding-agent", timeoutMs: 3000 },
+          otel: { enabled: false, serviceName: "luka", timeoutMs: 3000 },
         },
       })
     ).toThrow(/observability.localDir/);
@@ -210,7 +214,7 @@ describe("loadConfig", () => {
         observability: {
           localDir: ".events",
           feedback: { enabled: false, timeoutMs: 0, batchSize: 20 },
-          otel: { enabled: false, serviceName: "coding-agent", timeoutMs: 3000 },
+          otel: { enabled: false, serviceName: "luka", timeoutMs: 3000 },
         },
       })
     ).toThrow(/observability.feedback.timeoutMs/);

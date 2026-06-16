@@ -1,6 +1,10 @@
 import React from "react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { render as inkRender } from "ink-testing-library";
+import {
+  DEFAULT_OBSERVABILITY_DIR,
+  OTEL_SERVICE_NAME,
+} from "../../src/brand.js";
 import { TuiApp, type TuiSessionRunner } from "../../src/tui/app.js";
 import type { AppConfig } from "../../src/config.js";
 import { ToolRegistry } from "../../src/tools/index.js";
@@ -16,7 +20,7 @@ const baseConfig: AppConfig = {
   maxRetries: 3,
   verbose: false,
   observability: {
-    localDir: ".coding-agent/observability",
+    localDir: DEFAULT_OBSERVABILITY_DIR,
     feedback: {
       enabled: false,
       timeoutMs: 3000,
@@ -24,7 +28,7 @@ const baseConfig: AppConfig = {
     },
     otel: {
       enabled: false,
-      serviceName: "coding-agent",
+      serviceName: OTEL_SERVICE_NAME,
       timeoutMs: 3000,
     },
   },

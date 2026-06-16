@@ -11,7 +11,7 @@ describe("checkPathInSandbox", () => {
   let tempDir: string;
 
   beforeEach(async () => {
-    tempDir = await mkdtemp(path.join(os.tmpdir(), "coding-agent-sandbox-"));
+    tempDir = await mkdtemp(path.join(os.tmpdir(), "luka-sandbox-"));
   });
 
   afterEach(async () => {
@@ -133,7 +133,7 @@ describe("resolvePathInSandbox", () => {
   let tempDir: string;
 
   beforeEach(async () => {
-    tempDir = await mkdtemp(path.join(os.tmpdir(), "coding-agent-sandbox-"));
+    tempDir = await mkdtemp(path.join(os.tmpdir(), "luka-sandbox-"));
   });
 
   afterEach(async () => {

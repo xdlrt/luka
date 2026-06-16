@@ -2,6 +2,12 @@ import React from "react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { render as inkRender } from "ink-testing-library";
 import {
+  DEFAULT_OBSERVABILITY_DIR,
+  OTEL_SERVICE_NAME,
+  TUI_TITLE,
+  TUI_WELCOME,
+} from "../../src/brand.js";
+import {
   TuiApp,
   type TuiSessionRunner,
 } from "../../src/tui/app.js";
@@ -18,7 +24,7 @@ const baseConfig: AppConfig = {
   maxRetries: 3,
   verbose: false,
   observability: {
-    localDir: ".coding-agent/observability",
+    localDir: DEFAULT_OBSERVABILITY_DIR,
     feedback: {
       enabled: false,
       timeoutMs: 3000,
@@ -26,7 +32,7 @@ const baseConfig: AppConfig = {
     },
     otel: {
       enabled: false,
-      serviceName: "coding-agent",
+      serviceName: OTEL_SERVICE_NAME,
       timeoutMs: 3000,
     },
   },
@@ -48,11 +54,11 @@ describe("TuiApp", () => {
       <TuiApp config={baseConfig} registry={new ToolRegistry()} />
     );
 
-    expect(frame(instance)).toContain("coding-agent");
+    expect(frame(instance)).toContain(TUI_TITLE);
     expect(frame(instance)).toContain("Ready");
     expect(frame(instance)).toContain("model: doubao-test");
     expect(frame(instance)).toContain("cwd: /tmp/project");
-    expect(frame(instance)).toContain("Welcome to coding-agent");
+    expect(frame(instance)).toContain(TUI_WELCOME);
     expect(frame(instance)).toContain("permissions: manual approval");
     expect(frame(instance)).toContain("Enter to send - .exit or Ctrl+C to exit");
   });
@@ -212,12 +218,12 @@ describe("TuiApp", () => {
     );
     await waitForInputReady(instance);
 
-    expect(frame(instance)).toContain("Welcome to coding-agent");
+    expect(frame(instance)).toContain(TUI_WELCOME);
 
     await typeAndSubmit(instance, "hello");
     await waitFor(() => expect(frame(instance)).toContain("done"));
 
-    expect(frame(instance)).not.toContain("Welcome to coding-agent");
+    expect(frame(instance)).not.toContain(TUI_WELCOME);
     expect(frame(instance)).toContain("You");
     expect(frame(instance)).toContain("Agent");
   });

@@ -72,7 +72,7 @@ describe("P1 end-to-end agent demo", () => {
   let tempDir: string;
 
   beforeEach(async () => {
-    tempDir = await mkdtemp(path.join(os.tmpdir(), "coding-agent-p1-e2e-"));
+    tempDir = await mkdtemp(path.join(os.tmpdir(), "luka-p1-e2e-"));
   });
 
   afterEach(async () => {

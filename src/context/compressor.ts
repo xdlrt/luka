@@ -1,4 +1,5 @@
 import { MessageHistory } from "./message-history.js";
+import { BRAND_NAME } from "../brand.js";
 import type { Message } from "../types.js";
 
 const DEFAULT_MAX_TOKENS = 100000;
@@ -80,7 +81,7 @@ function takeLastN(messages: Message[], n: number): Message[] {
 
 function buildCompressionSystemPrompt(maxTokens: number): string {
   return [
-    "You are compressing an earlier coding-agent conversation into a compact context summary.",
+    `You are compressing an earlier ${BRAND_NAME} conversation into a compact context summary.`,
     `Keep the summary concise enough for a future prompt budget below ${maxTokens} tokens.`,
     "Preserve facts needed to continue the task correctly.",
     "Include files that were read or modified, key decisions, current task status, failures or verification results, and next steps that remain.",

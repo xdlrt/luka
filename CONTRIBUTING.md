@@ -1,6 +1,6 @@
 # Contributing
 
-Thanks for taking the time to improve `coding-agent`. This repository is a small TypeScript implementation of a coding-agent loop, so changes should keep the core flow readable, testable, and honest about current capabilities.
+Thanks for taking the time to improve `luka`. This repository is a small TypeScript implementation of a coding agent loop, so changes should keep the core flow readable, testable, and honest about current capabilities.
 
 ## Development Setup
 

@@ -1,6 +1,6 @@
 ---
 name: Bug report
-about: Report a reproducible problem in coding-agent
+about: Report a reproducible problem in luka
 title: "[Bug]: "
 labels: bug
 assignees: ""

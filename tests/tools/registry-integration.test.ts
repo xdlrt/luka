@@ -9,7 +9,7 @@ describe("default tool registry integration", () => {
   let tempDir: string;
 
   beforeEach(async () => {
-    tempDir = await mkdtemp(path.join(os.tmpdir(), "coding-agent-registry-"));
+    tempDir = await mkdtemp(path.join(os.tmpdir(), "luka-registry-"));
   });
 
   afterEach(async () => {

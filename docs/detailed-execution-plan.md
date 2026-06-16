@@ -90,7 +90,7 @@ flowchart TD
 ## 目标项目结构
 
 ```
-coding-agent/
+luka/
 ├── src/
 │   ├── index.ts                  # CLI 入口（readline REPL）
 │   ├── agent-loop.ts             # 主 Agentic 循环

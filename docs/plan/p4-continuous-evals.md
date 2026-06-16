@@ -88,7 +88,7 @@
   ```json
   {
     "observability": {
-      "localDir": ".coding-agent/observability",
+      "localDir": ".luka/observability",
       "feedback": {
         "enabled": false,
         "url": "https://example.com/events",
@@ -101,7 +101,7 @@
 
   **验收标准**：
   - 每次 Agent run 生成稳定 `runId`
-  - 默认写入 `.coding-agent/observability/{runId}.jsonl`
+  - 默认写入 `.luka/observability/{runId}.jsonl`
   - JSONL 每行一个 `AgentEvent`
   - HTTP feedback 支持单条或批量 POST
   - HTTP 失败默认不影响 Agent 成功状态，但计入 feedback health

@@ -471,3 +471,11 @@
 - Why: 远端仓库已改名为 `luka`，README 顶部标题仍是旧仓库名 `coding-agent`，造成仓库名与文档展示不一致；同时希望首屏有更醒目的项目标识。需要在更新命名的同时避免误导，因为 npm 包名和 CLI bin 仍是 `coding-agent`（`package.json` 未改名）。
 - What: 将 README 主标题从 `coding-agent` 改为 `luka`，并在标题下用 ASCII art 拼出 LUKA 字样；新增一行说明区分“仓库名 = luka”与“npm 包名/CLI 命令仍为 coding-agent”。正文中的 `npm start` / `coding-agent` / `npm link` 等命令保持不变，确保文档与 `package.json` 实际包名和 bin 一致，不制造命令与源码的偏差。
 - How: 仅编辑 `README.md` 文档，不触碰运行时代码、配置和测试边界；ASCII art 用 box-drawing 字符放进 `text` 代码块以保证终端和站点渲染对齐。本次为纯文档改动，未运行代码测试；“仓库改名不等于 npm 改名”这一边界在 README 与本复盘中均显式标注，避免后续误以为包名已迁移。
+
+## rename brand from coding-agent to luka
+
+- commit: rename brand from coding-agent to luka
+- time: 2026-06-16 16:30
+- Why: 上一提交只改了 README 标题，仓库内仍把 `coding-agent` 作为 npm 包名、bin 命令、运行时点目录、OTel service name、TUI 文案和站点 base 散落各处。用户要求把品牌名彻底统一为 `luka`，并显式要求把品牌名抽成全局变量，方便后续再次改名时只改一处而不必全仓搜索替换。
+- What: 新增 `src/brand.ts` 作为品牌单一事实来源，导出 `BRAND_NAME` 及其派生标识（`DOT_DIR`、`DEFAULT_OBSERVABILITY_DIR`、`OTEL_SERVICE_NAME`、`OTEL_TRACER_SCOPE`、`TUI_TITLE`、`TUI_WELCOME`、`EVAL_TMP_PREFIX`）。运行时代码（config 默认值、evals/runner、observability/otel tracer scope、tui 文案、context/compressor 提示词）改为从 brand 派生；运行时点目录由 `.coding-agent/observability` 改为 `.luka/observability`，属行为变化。静态文件无法 import TS，直接改字面量：`package.json`/lockfile 的 name 与 bin、`.gitignore`/`.npmignore` 点目录、`rspress.config.ts` 的 `base` → `/luka/`（跟随远端仓库新名）。测试断言改为复用 brand 常量，纯本地 mkdtemp 前缀与文档（README、CONTRIBUTING、issue 模板、demo.cast、detailed-execution-plan、plan/*、learning-site deep-dive 引用）改为 `luka`。
+- How: 关键设计是让“可被代码引用的标识”全部收敛到 `brand.ts`，静态配置文件因无法 import 而成为唯一需要手改的边界，并在 brand.ts 注释中点明这一点。范围上区分三类 `coding-agent`：指代本项目→改 `luka`；泛指“coding agent”概念（CONTRIBUTING 的 coding-agent loop、package.json description）→不动；`docs/commit-notes.md` 历史复盘→按 append-only 约定保留不动。踩坑点：旧工具 Grep 命中里大量 `docs/claude-code-learning/` 其实来自已删除但仍被 git 跟踪的旧文件，磁盘真实新书结构无引用，真正命中在未跟踪的 deep-dive WIP 子树。验证：`npm run build`、`npm test`（47 文件 339 测试全过）、`npm run eval:mock`（2/2）。`npm run docs:build` 仍失败，但原因是未跟踪的 deep-dive/index.md 指向尚未创建章节的 dead link，与本次 rename 无关；本提交不含该 WIP 子树与 gitignored 的 `.coding-agent/` 旧 trace。

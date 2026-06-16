@@ -1,4 +1,8 @@
 import { vi } from "vitest";
+import {
+  DEFAULT_OBSERVABILITY_DIR,
+  OTEL_SERVICE_NAME,
+} from "../src/brand.js";
 import type { AppConfig } from "../src/config.js";
 import type { LLMClient } from "../src/llm-client.js";
 import type {
@@ -17,7 +21,7 @@ export const baseConfig: AppConfig = {
   maxRetries: 3,
   verbose: false,
   observability: {
-    localDir: ".coding-agent/observability",
+    localDir: DEFAULT_OBSERVABILITY_DIR,
     feedback: {
       enabled: false,
       timeoutMs: 3000,
@@ -25,7 +29,7 @@ export const baseConfig: AppConfig = {
     },
     otel: {
       enabled: false,
-      serviceName: "coding-agent",
+      serviceName: OTEL_SERVICE_NAME,
       timeoutMs: 3000,
     },
   },

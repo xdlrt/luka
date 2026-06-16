@@ -8,7 +8,7 @@ describe("createGlobTool", () => {
   let tempDir: string;
 
   beforeEach(async () => {
-    tempDir = await mkdtemp(path.join(os.tmpdir(), "coding-agent-glob-"));
+    tempDir = await mkdtemp(path.join(os.tmpdir(), "luka-glob-"));
   });
 
   afterEach(async () => {

@@ -9,6 +9,7 @@ import {
 import os from "node:os";
 import path from "node:path";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { EVAL_TMP_PREFIX } from "../src/brand.js";
 import {
   loadTasks,
   loadSuite,
@@ -23,7 +24,7 @@ describe("eval runner", () => {
   let tempDir: string;
 
   beforeEach(async () => {
-    tempDir = await mkdtemp(path.join(os.tmpdir(), "coding-agent-evals-test-"));
+    tempDir = await mkdtemp(path.join(os.tmpdir(), "luka-evals-test-"));
   });
 
   afterEach(async () => {
@@ -303,7 +304,7 @@ async function writeSuite(
 async function expectNoEvalTempDir(taskId: string): Promise<void> {
   const entries = await readdir(os.tmpdir());
   expect(
-    entries.some((entry) => entry.startsWith(`coding-agent-eval-${taskId}-`))
+    entries.some((entry) => entry.startsWith(`${EVAL_TMP_PREFIX}${taskId}-`))
   ).toBe(false);
 }
 

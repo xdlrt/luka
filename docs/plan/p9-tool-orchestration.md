@@ -51,7 +51,7 @@
 
 - [ ] **P9-W19-T4**: 大工具输出截断与 artifact 落盘
 
-  **说明**：统一处理过长工具输出。超过阈值时，tool message 返回摘要和 artifact 相对路径，完整输出落盘到 `.coding-agent/tool-results/{id}.txt`。写入失败时降级为截断摘要，不影响 Agent Loop。
+  **说明**：统一处理过长工具输出。超过阈值时，tool message 返回摘要和 artifact 相对路径，完整输出落盘到 `.luka/tool-results/{id}.txt`。写入失败时降级为截断摘要，不影响 Agent Loop。
 
   **验收标准**：
   - stdout/stderr 过长时被截断

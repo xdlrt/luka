@@ -8,7 +8,7 @@ describe("createGrepTool", () => {
   let tempDir: string;
 
   beforeEach(async () => {
-    tempDir = await mkdtemp(path.join(os.tmpdir(), "coding-agent-grep-"));
+    tempDir = await mkdtemp(path.join(os.tmpdir(), "luka-grep-"));
   });
 
   afterEach(async () => {
