@@ -1,5 +1,13 @@
 # Commit Notes
 
+## docs: add deep-dive companion booklet
+
+- commit: docs: add deep-dive companion booklet
+- time: 2026-06-16 17:10
+- Why: 已出版的《拆解 Claude Code》是面向通用读者的科普书（零代码、不要求懂 TS），但缺一本面向资深工程师、深挖真实控制流/数据结构/协议细节/安全边界的硬核补充本。需要一本既能独立阅读、又能作为科普书对应章节下钻的姊妹篇，且必须诚实处理「真实源码快照来源未经核实、不可逐字复制」的版权与事实边界。
+- What: 在 `docs/claude-code-learning/deep-dive/` 新增《Claude Code 内核解剖》：封面（含统一来源免责声明与改写方法论）+ 9 章硬核主题正文（查询状态机、工具框架、上下文/记忆、Bash 安全与权限分层、外部协议、扩展治理、多 Agent、桥接远程、可观测成本）+ 2 个附录（数据结构速查、与科普书章节对照）。每章对应科普书某章但按硬核主题重组，省略协议密度低的 CLI/IO/Git 三章独立成文。深度篇 nav 入口、`/deep-dive/` 独立 sidebar、科普书封面互链已于上一提交（rename）随 rspress.config.ts/index.md 落地，本次提交补齐内容页。
+- How: 双素材来源严格区分——讲 Claude Code 机制一律用「阐释性重构」伪代码与类型签名（绝不逐字复制专有源码，推断处标「推断/推断转述」），讲最小可行落地用本仓库 `src/` 真实可运行代码并标注来源路径。第 3-9 章经二轮加深：从一份来源未核实的源码快照挖出真实算法与常量（三种压缩 auto/micro/reactive 与阈值反推、tree-sitter 引用上下文与规则遮蔽检测、退避 jitter 与按 querySource 区分重试、Skill frontmatter 契约与插件按出口分路径、fork 隔离与 worktree 与 filterIncompleteToolCalls、bridge 控制平面与 flush gate、四类 token 计价与子 Agent 成本归属），改写后落地，每章 188-371 行。验证用 `npm run docs:build` 构建通过（深度篇 11 页全生成），并全文检索确认无本机路径、`claude-code-main`、`<claude-code-snapshot>` 等泄露，真实代码块均带 `src/...` 来源标注。
+
 ## docs: restructure learning site into a publishable book
 
 - commit: docs: restructure learning site into a publishable book
