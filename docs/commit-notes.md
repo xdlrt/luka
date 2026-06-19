@@ -1,5 +1,13 @@
 # Commit Notes
 
+## session: add resumable local checkpoints
+
+- commit: session: add resumable local checkpoints
+- time: 2026-06-19 22:14
+- Why: P6 的目标不是单纯把运行日志落盘，而是让 Agent 重启后还能在不破坏 OpenAI tool call / tool message 配对的前提下继续同一段工作。没有可恢复的消息历史、TODO 状态和压缩边界，长任务只能依赖临时上下文，工具结果也无法成为下一次运行的事实来源。
+- What: 新增 `.luka/sessions/{sessionId}.json` 会话存储模型，保存非敏感配置快照、真实消息历史、TODO、工具摘要、验证摘要和 compact boundary；Agent Loop 支持恢复初始消息和 checkpoint 回调，压缩后、工具结果配对后、无工具停止和 maxTurns 停止都会写 checkpoint，写入失败只警告不打断主链路。CLI 新增 `--session` 与 `--resume`，参数会从用户 prompt 中剥离，恢复时会把旧消息历史和 TODO 状态注入下一轮，同时把新的 prompt 追加为新的 user message。
+- How: checkpoint 只在 assistant tool_calls 已经补齐对应 tool message 后保存，避免恢复出半截协议链；session-store 对 JSON schema 做显式校验，并对 token/password/secret/Authorization/ARK_API_KEY 等字段或文本做脱敏，只保存 `model/baseURL/maxTurns/testCommand/maxRetries` 等非敏感配置。测试覆盖 session 序列化与非法 schema、checkpoint 成功和失败警告、maxTurns 最终保存、压缩边界记录、TODO 恢复进入模型上下文、CLI 参数剥离和缺失 resume 的明确错误。验证路径为 P6 指定测试、上下文/TODO 相关测试、`npm run build` 和全量 `npm test`。
+
 ## eval: land baseline gate and command classification
 
 - commit: eval: land baseline gate and command classification

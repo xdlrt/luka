@@ -21,6 +21,12 @@ import { createDefaultToolRegistry, type ToolRegistry } from "./tools/index.js";
 import { Harness, type HarnessConfig, type HarnessLike } from "./harness.js";
 import { LLMClient } from "./llm-client.js";
 import { ContextCompressor } from "./context/compressor.js";
+import {
+  createSessionStore,
+  loadSessionRecord,
+  type SessionRecord,
+  type SessionStore,
+} from "./session-store.js";
 
 const OBSERVABILITY_FLUSH_TIMEOUT_MS = 500;
 
@@ -35,6 +41,9 @@ export interface RunAgentSessionOptions {
   runner?: AgentRunner;
   logger?: Logger;
   harnessConfig?: Partial<HarnessConfig>;
+  sessionId?: string;
+  resumeSessionId?: string;
+  onCheckpointWarning?: (message: string) => void;
 }
 
 export interface RunAgentSessionResult extends AgentResult {}
@@ -46,7 +55,7 @@ export async function runAgentSession(
   options: RunAgentSessionOptions = {}
 ): Promise<RunAgentSessionResult> {
   const userInput = rawInput.trim();
-  if (userInput === "") {
+  if (userInput === "" && options.resumeSessionId === undefined) {
     return {
       finalMessage: "",
       turnsUsed: 0,
@@ -55,6 +64,19 @@ export async function runAgentSession(
       totalTokens: 0,
       todoDisplay: undefined,
     };
+  }
+
+  const resumedSession =
+    options.resumeSessionId === undefined
+      ? undefined
+      : await loadSessionRecord(config.workingDirectory, options.resumeSessionId);
+  const sessionId = options.sessionId ?? options.resumeSessionId;
+  const sessionStore =
+    sessionId === undefined
+      ? undefined
+      : createSessionStore(config, sessionId, resumedSession);
+  if (resumedSession !== undefined) {
+    registry.getTodoManager()?.update(resumedSession.todos);
   }
 
   const { recorder, hookSummary, hooksConfigPath } = await createEventRecorder(
@@ -82,7 +104,9 @@ export async function runAgentSession(
             config,
             registry,
             recorder,
-            options
+            options,
+            resumedSession,
+            sessionStore
           )
         : await options.runner(userInput, config, registry, recorder);
 
@@ -199,7 +223,9 @@ function runAgentLoopWithOptions(
   config: AppConfig,
   registry: ToolRegistry,
   recorder: EventRecorder,
-  options: RunAgentSessionOptions
+  options: RunAgentSessionOptions,
+  resumedSession: SessionRecord | undefined,
+  sessionStore: SessionStore | undefined
 ): Promise<AgentResult> {
   const logger = options.logger ?? createLogger({ verbose: config.verbose });
   const client = new LLMClient(config);
@@ -219,7 +245,17 @@ function runAgentLoopWithOptions(
     harness,
     logger,
     new ContextCompressor(client),
-    recorder
+    recorder,
+    {
+      initialMessages: resumedSession?.messages,
+      checkpoint:
+        sessionStore === undefined
+          ? undefined
+          : async (checkpoint) => {
+              await sessionStore.save(checkpoint);
+            },
+      checkpointWarning: options.onCheckpointWarning,
+    }
   );
 }
 

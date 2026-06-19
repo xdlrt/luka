@@ -18,6 +18,8 @@ export interface ParsedCliArgs {
   maxRetries?: number;
   verbose: boolean;
   hooksConfigPath?: string;
+  sessionId?: string;
+  resumeSessionId?: string;
   initialInput: string;
 }
 
@@ -29,6 +31,8 @@ export function parseCliArgs(argv: string[]): ParsedCliArgs {
   let maxRetries: number | undefined;
   let verbose = false;
   let hooksConfigPath: string | undefined;
+  let sessionId: string | undefined;
+  let resumeSessionId: string | undefined;
 
   for (let i = 0; i < argv.length; i++) {
     const arg = argv[i];
@@ -67,6 +71,24 @@ export function parseCliArgs(argv: string[]): ParsedCliArgs {
       i += 1;
       continue;
     }
+    if (arg === "--session") {
+      const value = argv[i + 1];
+      if (value === undefined || value.trim() === "") {
+        throw new Error("--session requires a value");
+      }
+      sessionId = value;
+      i += 1;
+      continue;
+    }
+    if (arg === "--resume") {
+      const value = argv[i + 1];
+      if (value === undefined || value.trim() === "") {
+        throw new Error("--resume requires a value");
+      }
+      resumeSessionId = value;
+      i += 1;
+      continue;
+    }
     promptParts.push(arg);
   }
 
@@ -76,6 +98,8 @@ export function parseCliArgs(argv: string[]): ParsedCliArgs {
     maxRetries,
     verbose,
     hooksConfigPath,
+    sessionId,
+    resumeSessionId,
     initialInput: promptParts.join(" ").trim(),
   };
 }
@@ -86,15 +110,19 @@ export async function handleUserInput(
   config: AppConfig,
   registry: ToolRegistry,
   writeLine: WriteLine = console.log,
-  runner?: AgentRunner
+  runner?: AgentRunner,
+  options: { sessionId?: string; resumeSessionId?: string } = {}
 ): Promise<boolean> {
   const userInput = rawInput.trim();
-  if (userInput === "") return true;
+  if (userInput === "" && options.resumeSessionId === undefined) return true;
   if (userInput === ".exit") return false;
 
   try {
     const result = await runAgentSession(userInput, config, registry, {
       runner,
+      sessionId: options.sessionId,
+      resumeSessionId: options.resumeSessionId,
+      onCheckpointWarning: writeLine,
     });
     if (result.finalMessage !== "") {
       writeLine(result.finalMessage);
@@ -143,8 +171,11 @@ export async function runCli(
   const registry = createDefaultToolRegistry(config.workingDirectory);
   const initialInput = args.initialInput;
 
-  if (initialInput !== "") {
-    await handleUserInput(initialInput, config, registry);
+  if (initialInput !== "" || args.resumeSessionId !== undefined) {
+    await handleUserInput(initialInput, config, registry, console.log, undefined, {
+      sessionId: args.sessionId,
+      resumeSessionId: args.resumeSessionId,
+    });
     return;
   }
 

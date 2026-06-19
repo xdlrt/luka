@@ -4,7 +4,7 @@
 
 ## 任务清单
 
-- [ ] **P6-W16-T1**: 定义 Session 存储模型
+- [x] **P6-W16-T1**: 定义 Session 存储模型
 
   **说明**：新增会话存储模型，默认写入 `.luka/sessions/{sessionId}.json`。会话文件保存消息历史、TODO 状态、工具调用摘要、验证结果摘要、配置快照和 compact boundary。配置快照只能记录非敏感运行参数。
 
@@ -18,7 +18,7 @@
 
 ---
 
-- [ ] **P6-W16-T2**: Agent Loop 接入 checkpoint
+- [x] **P6-W16-T2**: Agent Loop 接入 checkpoint
 
   **说明**：在 `runAgentLoop` 中支持可选初始消息历史和 checkpoint 回调。每轮 LLM 响应后、每次工具执行后、停止前保存 checkpoint。checkpoint 只能在 tool call / tool message 配对完整后写入，避免恢复后破坏 API 消息协议。
 
@@ -33,7 +33,7 @@
 
 ---
 
-- [ ] **P6-W16-T3**: CLI 增加 session 与 resume 参数
+- [x] **P6-W16-T3**: CLI 增加 session 与 resume 参数
 
   **说明**：新增 `--session <sessionId>` 和 `--resume <sessionId>`。`--session` 指定本次运行写入的会话 ID；`--resume` 从已有会话恢复上下文并追加新的用户输入。这两个 flag 必须从用户任务中剥离，禁止作为 prompt 传给模型。
 
@@ -48,7 +48,7 @@
 
 ---
 
-- [ ] **P6-W16-T4**: 压缩边界与 TODO 恢复兼容
+- [x] **P6-W16-T4**: 压缩边界与 TODO 恢复兼容
 
   **说明**：会话恢复必须兼容上下文压缩和 TODO 注入。恢复后的消息历史保留系统提示词和最近消息，compact summary 继续作为摘要消息存在；TODO 状态重新注入系统上下文，但不能替代真实消息历史或工具结果。
 
