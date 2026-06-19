@@ -174,7 +174,7 @@ flowchart TD
 
 文件和检索工具当前只接受工作目录内的相对路径，并拒绝绝对路径和 `..` 路径片段。`read_file` 超过 500 行时默认返回前 100 行和后 50 行，可用 `offset` / `limit` 分段读取。`write_file` 会覆盖已有文件，不是合并写入。
 
-这个项目已有基础 Harness 控制层，但还不是完整 OS 沙箱或成熟命令安全系统。写入和命令工具默认需要用户确认；`--auto-approve` 会降低人工把关强度，但不会绕过路径边界、命令规则、参数校验或工具错误回传。`run_command` 会拦截递归删除、外部 URL `curl`/`wget`、强制推送、系统路径写入、`sudo`、`chmod 777` 等基础危险模式；命令仍通过 shell 执行，不应把当前规则理解为完整命令安全策略。
+这个项目已有基础 Harness 控制层，但还不是完整 OS 沙箱或成熟命令安全系统。写入和命令工具默认需要用户确认；`--auto-approve` 会降低人工把关强度，但不会绕过路径边界、命令规则、参数校验或工具错误回传。`run_command` 会拦截递归删除、外部 URL `curl`/`wget`、强制推送、系统路径写入、`sudo`、`chmod 777` 等基础危险模式，并在权限提示中给出保守命令分类（read/write/network/git-write/dangerous/unknown）；命令仍通过 shell 执行，不应把当前规则理解为完整命令安全策略。
 
 工具执行异常会转成 tool 消息回传给模型，除非遇到协议级不可恢复错误。Observability event 会对 payload 做摘要和敏感字段脱敏；hook、HTTP feedback 和 OTel trace exporter 只接收脱敏后的事件数据。OTel 当前只导出 traces，不替代本地 JSONL trace，也不包含 metrics/logs 平台能力。
 
@@ -198,12 +198,14 @@ npm run eval:mock
 npm run eval -- --task 01-create-file
 npm run eval -- --suite smoke
 npm run eval -- --all
+npm run eval -- --suite regression --repeat 3 --save-baseline evals/baselines/p4-continuous.json
 npm run eval -- --suite regression --repeat 3
 npm run eval -- --all --baseline evals/baselines/p4-continuous.json --check
 npm run eval:mock
+npm run eval:regression
 ```
 
-Runner 会先构建项目，再用真实 Agent Loop 执行任务，并把结果写入 `evals/results/{runId}.json`。真实 eval 需要有效的 `ARK_API_KEY` 和 `ARK_MODEL`；`npm run eval:mock` 不需要密钥，只验证 runner、trace、report 和 CI 链路，不代表模型能力。完整阶段计划和复盘见 `docs/detailed-execution-plan.md`、`docs/plan/` 和 `docs/retrospective.md`。
+Runner 会先构建项目，再用真实 Agent Loop 执行任务，并把结果写入 `evals/results/{runId}.json`。`--repeat` 会生成按任务聚合的稳定性统计、flaky 列表、失败任务列表和均值/标准差；`--save-baseline` 会把当前 run 固化为 `evals/baselines/*.json`，`--baseline ... --check` 用该基线做退化门禁。真实 eval 需要有效的 `ARK_API_KEY` 和 `ARK_MODEL`；PR CI 只跑 `npm run eval:mock`，定时或手动 workflow 在 secrets 存在时运行 `npm run eval:regression`。完整阶段计划和复盘见 `docs/detailed-execution-plan.md`、`docs/plan/` 和 `docs/retrospective.md`。
 
 ## License
 

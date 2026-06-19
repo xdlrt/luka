@@ -54,6 +54,22 @@ export interface EvalRunResult {
   gate?: EvalGateResult;
 }
 
+export interface EvalTaskStats {
+  taskId: string;
+  attempts: number;
+  passedAttempts: number;
+  passRate: number;
+  flaky: boolean;
+  alwaysFailed: boolean;
+  averageTurns: number;
+  turnsStdDev: number;
+  averageToolCalls: number;
+  toolCallsStdDev: number;
+  averageWallTimeMs: number;
+  wallTimeStdDev: number;
+  failureReasons: string[];
+}
+
 export interface EvalSummary {
   totalAttempts: number;
   totalTasks: number;
@@ -65,6 +81,9 @@ export interface EvalSummary {
   verificationRuns: number;
   flakyTasks: string[];
   flakyRate: number;
+  stablePassedTasks: string[];
+  alwaysFailedTasks: string[];
+  taskStats: EvalTaskStats[];
   feedbackSuccessRate: number | null;
 }
 

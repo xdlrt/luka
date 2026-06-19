@@ -101,7 +101,7 @@ describe("requestPermission", () => {
 
     expect(decision).toEqual({ approved: true });
     expect(io.write).toHaveBeenCalledWith(
-      "[PERMISSION] Run command: npm test\n"
+      "[PERMISSION] Run command: npm test\nClassification: unknown\nReason: npm test executes project scripts\n"
     );
     expect(io.question).toHaveBeenCalledWith("Proceed? (y/n) ");
   });

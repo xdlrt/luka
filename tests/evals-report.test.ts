@@ -12,6 +12,9 @@ describe("eval report", () => {
     expect(report).toContain("# Eval Summary run-a");
     expect(report).toContain("Pass rate: 50.0% (1/2)");
     expect(report).toContain("Feedback success rate: 100.0%");
+    expect(report).toContain("Always failed tasks: task-b");
+    expect(report).toContain("## Repeat Stability");
+    expect(report).toContain("| task-b | 0/1 | 0.0% | no | 2.00 | 0.00 | 1.00 | 0.00 | failed |");
     expect(report).toContain("task-b attempt 1: failed (trace-b.jsonl)");
     expect(report).toContain("| task-a | 1 | PASS | 2 | 1 | trace-a.jsonl |");
   });
@@ -20,6 +23,10 @@ describe("eval report", () => {
     expect(createDashboardData(createRunResult())).toMatchObject({
       runId: "run-a",
       summary: { totalAttempts: 2 },
+      taskStats: [
+        { taskId: "task-a", passRate: 1 },
+        { taskId: "task-b", alwaysFailed: true },
+      ],
       results: [
         { taskId: "task-a", toolCallCount: 1 },
         { taskId: "task-b", failureReason: "failed" },
@@ -46,6 +53,40 @@ function createRunResult(): EvalRunResult {
       verificationRuns: 0,
       flakyTasks: [],
       flakyRate: 0,
+      stablePassedTasks: ["task-a"],
+      alwaysFailedTasks: ["task-b"],
+      taskStats: [
+        {
+          taskId: "task-a",
+          attempts: 1,
+          passedAttempts: 1,
+          passRate: 1,
+          flaky: false,
+          alwaysFailed: false,
+          averageTurns: 2,
+          turnsStdDev: 0,
+          averageToolCalls: 1,
+          toolCallsStdDev: 0,
+          averageWallTimeMs: 10,
+          wallTimeStdDev: 0,
+          failureReasons: [],
+        },
+        {
+          taskId: "task-b",
+          attempts: 1,
+          passedAttempts: 0,
+          passRate: 0,
+          flaky: false,
+          alwaysFailed: true,
+          averageTurns: 2,
+          turnsStdDev: 0,
+          averageToolCalls: 1,
+          toolCallsStdDev: 0,
+          averageWallTimeMs: 10,
+          wallTimeStdDev: 0,
+          failureReasons: ["failed"],
+        },
+      ],
       feedbackSuccessRate: 1,
     },
     results: [

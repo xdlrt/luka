@@ -1,5 +1,13 @@
 # Commit Notes
 
+## eval: land baseline gate and command classification
+
+- commit: eval: land baseline gate and command classification
+- time: 2026-06-19 21:28
+- Why: P5 复盘里留下了四个真实限制：P4 baseline 没有顺手的保存入口、真实 regression eval 没有受控 CI 路径、repeat 结果缺少按任务稳定性统计、命令安全仍停在基础黑名单。继续只在复盘里记录这些限制，会让计划状态和实际能力长期错位；但补齐时也必须守住边界，不能把基础命令分类误写成完整沙箱。
+- What: 为 eval runner 增加 `--save-baseline` 与 `eval:regression`，把 P5 final run 固化为 `evals/baselines/p4-continuous.json`；repeat summary 增加按 task 聚合的 pass rate、flaky、持续失败、均值和标准差，并同步到 Markdown report 和 dashboard。GitHub eval workflow 保持 PR 只跑 mock eval，同时支持手动/定时触发，在 secrets 存在时运行真实 regression gate。权限侧新增保守命令分类器，并在 `run_command` 权限提示中展示 read/write/network/git-write/dangerous/unknown；P8 只标记 W18-T1 完成，继续明确当前不是完整 OS 沙箱或成熟命令安全策略。
+- How: eval 改动复用已有 `createBaseline`/`checkRegression`，保存 baseline 发生在 run result 和报告落盘之后，gate 失败时不会把退化结果固化为新基线；repeat 统计按 taskId 聚合 attempt，避免只看全局 pass rate 掩盖 flaky 或稳定失败。workflow 用 step-level secrets gate 输出 `run_real=true/false`，无密钥时跳过而不失败。命令分类器仍以现有危险规则为权威拦截层，分类只作为解释和后续 P8 规则扩展的中间层。验证路径为 `npm run build`、定向 eval/permission/workflow 测试、权限全链路测试、`npm run eval:mock`、全量 `npm test` 和 `git diff --check`。
+
 ## docs: add deep-dive companion booklet
 
 - commit: docs: add deep-dive companion booklet

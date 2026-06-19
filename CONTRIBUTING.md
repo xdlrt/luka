@@ -28,6 +28,13 @@ Run the mock eval path when touching eval, trace, hooks, or reporting code:
 npm run eval:mock
 ```
 
+Maintainers should run the gated regression suite before release-sensitive
+changes. It requires `ARK_API_KEY` and `ARK_MODEL`:
+
+```bash
+npm run eval:regression
+```
+
 ## Configuration
 
 Real model runs require:

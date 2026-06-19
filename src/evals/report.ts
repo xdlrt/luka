@@ -7,6 +7,9 @@ export function buildMarkdownReport(
   gate: EvalGateResult | undefined = result.gate
 ): string {
   const failed = result.results.filter((item) => !item.passed);
+  const flakyTasks = result.summary.flakyTasks ?? [];
+  const alwaysFailedTasks = result.summary.alwaysFailedTasks ?? [];
+  const taskStats = result.summary.taskStats ?? [];
   const lines = [
     `# Eval Summary ${result.runId}`,
     "",
@@ -19,7 +22,8 @@ export function buildMarkdownReport(
     `- Permission denied: ${result.summary.permissionDeniedCount}`,
     `- Verification runs: ${result.summary.verificationRuns}`,
     `- Feedback success rate: ${formatNullableRate(result.summary.feedbackSuccessRate)}`,
-    `- Flaky tasks: ${result.summary.flakyTasks.length === 0 ? "none" : result.summary.flakyTasks.join(", ")}`,
+    `- Flaky tasks: ${flakyTasks.length === 0 ? "none" : flakyTasks.join(", ")}`,
+    `- Always failed tasks: ${alwaysFailedTasks.length === 0 ? "none" : alwaysFailedTasks.join(", ")}`,
     "",
     "## Gate",
     "",
@@ -46,6 +50,17 @@ export function buildMarkdownReport(
         `- ${item.taskId} attempt ${item.attempt}: ${item.failureReason ?? "failed"} (${item.tracePath})`
       );
     }
+  }
+
+  lines.push("", "## Repeat Stability", "");
+  lines.push(
+    "| Task | Passes | Pass Rate | Flaky | Avg Turns | Turns StdDev | Avg Tools | Tool StdDev | Failures |"
+  );
+  lines.push("| --- | ---: | ---: | --- | ---: | ---: | ---: | ---: | --- |");
+  for (const task of taskStats) {
+    lines.push(
+      `| ${task.taskId} | ${task.passedAttempts}/${task.attempts} | ${formatRate(task.passRate)} | ${task.flaky ? "yes" : "no"} | ${task.averageTurns.toFixed(2)} | ${task.turnsStdDev.toFixed(2)} | ${task.averageToolCalls.toFixed(2)} | ${task.toolCallsStdDev.toFixed(2)} | ${task.failureReasons.length === 0 ? "" : task.failureReasons.join("<br>")} |`
+    );
   }
 
   lines.push("", "## Results", "");
@@ -85,6 +100,7 @@ export function createDashboardData(result: EvalRunResult): Record<string, unkno
     selection: result.selection,
     repeat: result.repeat,
     summary: result.summary,
+    taskStats: result.summary.taskStats ?? [],
     gate: result.gate,
     results: result.results.map((item) => ({
       taskId: item.taskId,

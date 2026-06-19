@@ -23,6 +23,7 @@
     "docs:preview": "rspress preview",
     "eval": "npm run build && node dist/evals/runner.js",
     "eval:mock": "npm run build && node dist/evals/runner.js --suite smoke --mock",
+    "eval:regression": "npm run build && node dist/evals/runner.js --suite regression --repeat 3 --baseline evals/baselines/p4-continuous.json --check",
     "start": "npm run build && node dist/index.js",
     "test": "vitest run"
   },

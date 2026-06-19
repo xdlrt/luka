@@ -62,7 +62,7 @@
 
 ---
 
-- [ ] **P1-W1-T4**: 跑通首次 LLM 调用 — 发送消息、收到文本回复
+- [x] **P1-W1-T4**: 跑通首次 LLM 调用 — 发送消息、收到文本回复
 
   **说明**：创建 `src/llm-client.ts`，用 `fetch` 向方舟（Ark）的 OpenAI 兼容 `POST {baseURL}/chat/completions` 端点发送单条用户消息，获取文本回复。先用最简单的非流式调用，做一个 `sendMessage` 函数（Authorization: Bearer {apiKey}）。
 

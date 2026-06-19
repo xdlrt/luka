@@ -1,0 +1,264 @@
+{
+  "schemaVersion": 1,
+  "createdAt": "2026-06-14T08:41:43.355Z",
+  "model": "configured-model",
+  "thresholds": {
+    "maxAverageTurnsIncreaseRatio": 0.25,
+    "maxAverageToolCallsIncreaseRatio": 0.25,
+    "maxFlakyRate": 0.1,
+    "minFeedbackSuccessRate": 0.95
+  },
+  "summary": {
+    "totalAttempts": 10,
+    "totalTasks": 10,
+    "passedAttempts": 9,
+    "passRate": 0.9,
+    "averageTurns": 5.3,
+    "averageToolCalls": 6.4,
+    "permissionDeniedCount": 0,
+    "verificationRuns": 11,
+    "flakyTasks": [],
+    "flakyRate": 0,
+    "feedbackSuccessRate": null,
+    "stablePassedTasks": [
+      "01-create-file",
+      "02-fix-typo",
+      "03-fix-logic-bug",
+      "04-add-function",
+      "05-refactor",
+      "06-grep-fix",
+      "07-add-patterned-function",
+      "08-cross-file-rename",
+      "10-implement-from-spec"
+    ],
+    "alwaysFailedTasks": [
+      "09-add-tests-for-module"
+    ],
+    "taskStats": [
+      {
+        "taskId": "01-create-file",
+        "attempts": 1,
+        "passedAttempts": 1,
+        "passRate": 1,
+        "flaky": false,
+        "alwaysFailed": false,
+        "averageTurns": 2,
+        "turnsStdDev": 0,
+        "averageToolCalls": 1,
+        "toolCallsStdDev": 0,
+        "averageWallTimeMs": 22161,
+        "wallTimeStdDev": 0,
+        "failureReasons": []
+      },
+      {
+        "taskId": "02-fix-typo",
+        "attempts": 1,
+        "passedAttempts": 1,
+        "passRate": 1,
+        "flaky": false,
+        "alwaysFailed": false,
+        "averageTurns": 3,
+        "turnsStdDev": 0,
+        "averageToolCalls": 2,
+        "toolCallsStdDev": 0,
+        "averageWallTimeMs": 7212,
+        "wallTimeStdDev": 0,
+        "failureReasons": []
+      },
+      {
+        "taskId": "03-fix-logic-bug",
+        "attempts": 1,
+        "passedAttempts": 1,
+        "passRate": 1,
+        "flaky": false,
+        "alwaysFailed": false,
+        "averageTurns": 4,
+        "turnsStdDev": 0,
+        "averageToolCalls": 4,
+        "toolCallsStdDev": 0,
+        "averageWallTimeMs": 8496,
+        "wallTimeStdDev": 0,
+        "failureReasons": []
+      },
+      {
+        "taskId": "04-add-function",
+        "attempts": 1,
+        "passedAttempts": 1,
+        "passRate": 1,
+        "flaky": false,
+        "alwaysFailed": false,
+        "averageTurns": 3,
+        "turnsStdDev": 0,
+        "averageToolCalls": 3,
+        "toolCallsStdDev": 0,
+        "averageWallTimeMs": 6749,
+        "wallTimeStdDev": 0,
+        "failureReasons": []
+      },
+      {
+        "taskId": "05-refactor",
+        "attempts": 1,
+        "passedAttempts": 1,
+        "passRate": 1,
+        "flaky": false,
+        "alwaysFailed": false,
+        "averageTurns": 5,
+        "turnsStdDev": 0,
+        "averageToolCalls": 5,
+        "toolCallsStdDev": 0,
+        "averageWallTimeMs": 17135,
+        "wallTimeStdDev": 0,
+        "failureReasons": []
+      },
+      {
+        "taskId": "06-grep-fix",
+        "attempts": 1,
+        "passedAttempts": 1,
+        "passRate": 1,
+        "flaky": false,
+        "alwaysFailed": false,
+        "averageTurns": 4,
+        "turnsStdDev": 0,
+        "averageToolCalls": 5,
+        "toolCallsStdDev": 0,
+        "averageWallTimeMs": 14663,
+        "wallTimeStdDev": 0,
+        "failureReasons": []
+      },
+      {
+        "taskId": "07-add-patterned-function",
+        "attempts": 1,
+        "passedAttempts": 1,
+        "passRate": 1,
+        "flaky": false,
+        "alwaysFailed": false,
+        "averageTurns": 5,
+        "turnsStdDev": 0,
+        "averageToolCalls": 6,
+        "toolCallsStdDev": 0,
+        "averageWallTimeMs": 17239,
+        "wallTimeStdDev": 0,
+        "failureReasons": []
+      },
+      {
+        "taskId": "08-cross-file-rename",
+        "attempts": 1,
+        "passedAttempts": 1,
+        "passRate": 1,
+        "flaky": false,
+        "alwaysFailed": false,
+        "averageTurns": 12,
+        "turnsStdDev": 0,
+        "averageToolCalls": 17,
+        "toolCallsStdDev": 0,
+        "averageWallTimeMs": 54394,
+        "wallTimeStdDev": 0,
+        "failureReasons": []
+      },
+      {
+        "taskId": "09-add-tests-for-module",
+        "attempts": 1,
+        "passedAttempts": 0,
+        "passRate": 0,
+        "flaky": false,
+        "alwaysFailed": true,
+        "averageTurns": 7,
+        "turnsStdDev": 0,
+        "averageToolCalls": 11,
+        "toolCallsStdDev": 0,
+        "averageWallTimeMs": 35751,
+        "wallTimeStdDev": 0,
+        "failureReasons": [
+          "expected tests/slugify.test.mjs to contain multiple-spaces"
+        ]
+      },
+      {
+        "taskId": "10-implement-from-spec",
+        "attempts": 1,
+        "passedAttempts": 1,
+        "passRate": 1,
+        "flaky": false,
+        "alwaysFailed": false,
+        "averageTurns": 8,
+        "turnsStdDev": 0,
+        "averageToolCalls": 10,
+        "toolCallsStdDev": 0,
+        "averageWallTimeMs": 27116,
+        "wallTimeStdDev": 0,
+        "failureReasons": []
+      }
+    ]
+  },
+  "tasks": [
+    {
+      "taskId": "01-create-file",
+      "passed": true,
+      "turnsUsed": 2,
+      "toolCallCount": 1,
+      "tracePath": "evals/results/traces/2026-06-14T08-41-43-355Z/c000856b-36f3-4231-8612-814ead188448.jsonl"
+    },
+    {
+      "taskId": "02-fix-typo",
+      "passed": true,
+      "turnsUsed": 3,
+      "toolCallCount": 2,
+      "tracePath": "evals/results/traces/2026-06-14T08-41-43-355Z/0b817861-ef58-4a73-a9c3-b6453d1e80cf.jsonl"
+    },
+    {
+      "taskId": "03-fix-logic-bug",
+      "passed": true,
+      "turnsUsed": 4,
+      "toolCallCount": 4,
+      "tracePath": "evals/results/traces/2026-06-14T08-41-43-355Z/9c5e6715-5da7-46a4-a863-dc09a28ad145.jsonl"
+    },
+    {
+      "taskId": "04-add-function",
+      "passed": true,
+      "turnsUsed": 3,
+      "toolCallCount": 3,
+      "tracePath": "evals/results/traces/2026-06-14T08-41-43-355Z/4f659054-8075-4b6d-847f-2ba374bda151.jsonl"
+    },
+    {
+      "taskId": "05-refactor",
+      "passed": true,
+      "turnsUsed": 5,
+      "toolCallCount": 5,
+      "tracePath": "evals/results/traces/2026-06-14T08-41-43-355Z/fef0bd82-bc00-46f1-90ea-a8a5030979c6.jsonl"
+    },
+    {
+      "taskId": "06-grep-fix",
+      "passed": true,
+      "turnsUsed": 4,
+      "toolCallCount": 5,
+      "tracePath": "evals/results/traces/2026-06-14T08-41-43-355Z/26406c32-9a91-4337-8778-07774cbf909a.jsonl"
+    },
+    {
+      "taskId": "07-add-patterned-function",
+      "passed": true,
+      "turnsUsed": 5,
+      "toolCallCount": 6,
+      "tracePath": "evals/results/traces/2026-06-14T08-41-43-355Z/a5cd1338-1839-484a-9470-2344e43fbb5f.jsonl"
+    },
+    {
+      "taskId": "08-cross-file-rename",
+      "passed": true,
+      "turnsUsed": 12,
+      "toolCallCount": 17,
+      "tracePath": "evals/results/traces/2026-06-14T08-41-43-355Z/6b46fd90-7b94-41bd-b6fa-2f3317f6aafe.jsonl"
+    },
+    {
+      "taskId": "09-add-tests-for-module",
+      "passed": false,
+      "turnsUsed": 7,
+      "toolCallCount": 11,
+      "tracePath": "evals/results/traces/2026-06-14T08-41-43-355Z/4117c9e6-5093-476d-b95c-2a4df34e9678.jsonl"
+    },
+    {
+      "taskId": "10-implement-from-spec",
+      "passed": true,
+      "turnsUsed": 8,
+      "toolCallCount": 10,
+      "tracePath": "evals/results/traces/2026-06-14T08-41-43-355Z/32a1e457-07bf-48c9-84af-0e736bcad217.jsonl"
+    }
+  ]
+}

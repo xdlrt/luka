@@ -221,6 +221,12 @@ describe("package scripts", () => {
       "npm run build && node dist/evals/runner.js --suite smoke --mock"
     );
   });
+
+  it("provides a gated regression eval command with baseline check", () => {
+    expect(packageJson.scripts["eval:regression"]).toBe(
+      "npm run build && node dist/evals/runner.js --suite regression --repeat 3 --baseline evals/baselines/p4-continuous.json --check"
+    );
+  });
 });
 
 describe("runCli", () => {

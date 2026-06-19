@@ -1,5 +1,6 @@
 import { createInterface } from "node:readline/promises";
 import { classifyTool, type ToolCategory } from "./categories.js";
+import { classifyCommand } from "./command-classifier.js";
 import type { ToolDefinition } from "../tools/types.js";
 
 const CANCELLED_BY_USER = "Cancelled by user";
@@ -104,7 +105,8 @@ function formatPermissionMessage(request: PermissionRequest): string {
   }
 
   if (request.category === "command" && request.toolName === "run_command") {
-    return `[PERMISSION] Run command: ${formatValue(request.input.command)}\n`;
+    const classification = classifyCommand(request.input.command);
+    return `[PERMISSION] Run command: ${formatValue(request.input.command)}\nClassification: ${classification.kind}\nReason: ${classification.reasons.join("; ")}\n`;
   }
 
   return `[PERMISSION] Execute tool: ${request.toolName}\n`;

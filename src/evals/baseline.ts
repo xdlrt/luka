@@ -1,4 +1,5 @@
-import { readFile } from "node:fs/promises";
+import { mkdir, readFile, writeFile } from "node:fs/promises";
+import path from "node:path";
 import type { EvalGateResult, EvalRunResult, EvalSummary } from "./types.js";
 
 export interface EvalThresholds {
@@ -32,6 +33,18 @@ export const DEFAULT_THRESHOLDS: EvalThresholds = {
 
 export async function loadBaseline(path: string): Promise<EvalBaseline> {
   return parseBaseline(JSON.parse(await readFile(path, "utf8")));
+}
+
+export async function writeBaseline(
+  baselinePath: string,
+  result: EvalRunResult
+): Promise<void> {
+  await mkdir(path.dirname(baselinePath), { recursive: true });
+  await writeFile(
+    baselinePath,
+    `${JSON.stringify(createBaseline(result), null, 2)}\n`,
+    "utf8"
+  );
 }
 
 export function createBaseline(result: EvalRunResult): EvalBaseline {
@@ -92,6 +105,12 @@ export function checkRegression(
     failures.push(
       `flaky rate ${formatRate(result.summary.flakyRate)} exceeds ${formatRate(thresholds.maxFlakyRate)}`
     );
+  }
+
+  for (const task of result.summary.taskStats ?? []) {
+    if (task.flaky) {
+      failures.push(`flaky task detected: ${task.taskId}`);
+    }
   }
 
   if (

@@ -2,6 +2,9 @@ name: Evals
 
 on:
   pull_request:
+  workflow_dispatch:
+  schedule:
+    - cron: "0 20 * * 1"
 
 jobs:
   evals:
@@ -28,6 +31,26 @@ jobs:
 
       - name: Mock eval
         run: npm run eval:mock
+
+      - name: Check real eval credentials
+        id: real-eval
+        env:
+          ARK_API_KEY: ${{ secrets.ARK_API_KEY }}
+          ARK_MODEL: ${{ secrets.ARK_MODEL }}
+        run: |
+          if [ -n "$ARK_API_KEY" ] && [ -n "$ARK_MODEL" ]; then
+            echo "run_real=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "run_real=false" >> "$GITHUB_OUTPUT"
+            echo "Skipping real regression eval because ARK_API_KEY or ARK_MODEL is not configured."
+          fi
+
+      - name: Real regression eval
+        if: github.event_name != 'pull_request' && steps.real-eval.outputs.run_real == 'true'
+        env:
+          ARK_API_KEY: ${{ secrets.ARK_API_KEY }}
+          ARK_MODEL: ${{ secrets.ARK_MODEL }}
+        run: npm run eval:regression
 
       - name: Upload eval artifacts
         uses: actions/upload-artifact@v4

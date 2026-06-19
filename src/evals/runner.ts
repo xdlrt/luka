@@ -23,13 +23,14 @@ import {
 import { createObservabilitySinks } from "../session.js";
 import { createDefaultToolRegistry } from "../tools/index.js";
 import { runTests } from "../verification/test-runner.js";
-import { checkRegression, loadBaseline } from "./baseline.js";
+import { checkRegression, loadBaseline, writeBaseline } from "./baseline.js";
 import { writeReportFiles } from "./report.js";
 import { readTraceSummary } from "./trace-reader.js";
 import type {
   EvalRunResult,
   EvalSelectionMode,
   EvalSummary,
+  EvalTaskStats,
   EvalTask,
   EvalTaskResult,
 } from "./types.js";
@@ -67,6 +68,7 @@ export interface EvalRunnerOptions {
   traceDir?: string;
   repeat?: number;
   baselinePath?: string;
+  saveBaselinePath?: string;
   check?: boolean;
   mock?: boolean;
   runner?: AgentRunner;
@@ -149,6 +151,9 @@ export async function runEvalSuite(
   runResult = { ...runResult, reportPath: paths.reportPath, dashboardPath: paths.dashboardPath };
 
   await writeRunResult(resultsDir, runResult);
+  if (options.saveBaselinePath !== undefined) {
+    await writeBaseline(options.saveBaselinePath, runResult);
+  }
 
   return runResult;
 }
@@ -494,6 +499,7 @@ function parseArgs(argv: string[]): EvalRunnerOptions {
   let all = false;
   let repeat: number | undefined;
   let baselinePath: string | undefined;
+  let saveBaselinePath: string | undefined;
   let check = false;
   let mock = false;
 
@@ -537,6 +543,15 @@ function parseArgs(argv: string[]): EvalRunnerOptions {
       i += 1;
       continue;
     }
+    if (arg === "--save-baseline") {
+      const value = argv[i + 1];
+      if (value === undefined || value.trim() === "") {
+        throw new Error("--save-baseline requires a value");
+      }
+      saveBaselinePath = value;
+      i += 1;
+      continue;
+    }
     if (arg === "--check") {
       check = true;
       continue;
@@ -548,7 +563,16 @@ function parseArgs(argv: string[]): EvalRunnerOptions {
     throw new Error(`Unknown eval argument: ${arg}`);
   }
 
-  return { taskId, suite, all, repeat, baselinePath, check, mock };
+  return {
+    taskId,
+    suite,
+    all,
+    repeat,
+    baselinePath,
+    saveBaselinePath,
+    check,
+    mock,
+  };
 }
 
 function printSummary(result: EvalRunResult): void {
@@ -589,13 +613,18 @@ function summarizeResults(
     (item) => item.feedbackStatus === "ok"
   );
   const taskIds = new Set(results.map((item) => item.taskId));
-  const flakyTasks = Array.from(taskIds).filter((taskId) => {
-    const attempts = results.filter((item) => item.taskId === taskId);
-    return (
-      attempts.some((item) => item.passed) &&
-      attempts.some((item) => !item.passed)
-    );
-  });
+  const taskStats = Array.from(taskIds)
+    .sort((a, b) => a.localeCompare(b))
+    .map((taskId) => summarizeTask(taskId, results));
+  const flakyTasks = taskStats
+    .filter((item) => item.flaky)
+    .map((item) => item.taskId);
+  const stablePassedTasks = taskStats
+    .filter((item) => item.passRate === 1)
+    .map((item) => item.taskId);
+  const alwaysFailedTasks = taskStats
+    .filter((item) => item.alwaysFailed)
+    .map((item) => item.taskId);
 
   return {
     totalAttempts,
@@ -614,6 +643,9 @@ function summarizeResults(
     ),
     flakyTasks,
     flakyRate: totalTasks === 0 ? 0 : flakyTasks.length / totalTasks,
+    stablePassedTasks,
+    alwaysFailedTasks,
+    taskStats,
     feedbackSuccessRate:
       feedbackConfigured.length === 0
         ? null
@@ -621,9 +653,55 @@ function summarizeResults(
   };
 }
 
+function summarizeTask(
+  taskId: string,
+  results: EvalTaskResult[]
+): EvalTaskStats {
+  const attempts = results.filter((item) => item.taskId === taskId);
+  const passedAttempts = attempts.filter((item) => item.passed).length;
+  const passRate =
+    attempts.length === 0 ? 0 : passedAttempts / attempts.length;
+  const toolCounts = attempts.map((item) => item.toolCalls.length);
+  const turns = attempts.map((item) => item.turnsUsed);
+  const wallTimes = attempts.map((item) => item.wallTimeMs);
+
+  return {
+    taskId,
+    attempts: attempts.length,
+    passedAttempts,
+    passRate,
+    flaky: passedAttempts > 0 && passedAttempts < attempts.length,
+    alwaysFailed: attempts.length > 0 && passedAttempts === 0,
+    averageTurns: average(turns),
+    turnsStdDev: standardDeviation(turns),
+    averageToolCalls: average(toolCounts),
+    toolCallsStdDev: standardDeviation(toolCounts),
+    averageWallTimeMs: average(wallTimes),
+    wallTimeStdDev: standardDeviation(wallTimes),
+    failureReasons: unique(
+      attempts
+        .map((item) => item.failureReason)
+        .filter((item): item is string => item !== undefined)
+    ),
+  };
+}
+
 function average(values: number[]): number {
   if (values.length === 0) return 0;
   return values.reduce((total, value) => total + value, 0) / values.length;
+}
+
+function standardDeviation(values: number[]): number {
+  if (values.length === 0) return 0;
+  const mean = average(values);
+  const variance =
+    values.reduce((total, value) => total + (value - mean) ** 2, 0) /
+    values.length;
+  return Math.sqrt(variance);
+}
+
+function unique(values: string[]): string[] {
+  return Array.from(new Set(values));
 }
 
 function resolveModel(results: EvalTaskResult[], mock: boolean): string {

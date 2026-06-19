@@ -48,8 +48,26 @@ describe("eval baseline", () => {
         passRate: 0,
         averageTurns: 10,
         averageToolCalls: 10,
+        flakyTasks: ["task-a"],
         flakyRate: 0.5,
         feedbackSuccessRate: 0.5,
+        taskStats: [
+          {
+            taskId: "task-a",
+            attempts: 2,
+            passedAttempts: 1,
+            passRate: 0.5,
+            flaky: true,
+            alwaysFailed: false,
+            averageTurns: 10,
+            turnsStdDev: 1,
+            averageToolCalls: 10,
+            toolCallsStdDev: 1,
+            averageWallTimeMs: 20,
+            wallTimeStdDev: 2,
+            failureReasons: ["failed"],
+          },
+        ],
       },
       results: [
         {
@@ -67,6 +85,7 @@ describe("eval baseline", () => {
     expect(gate.failures.join("\n")).toContain("average turns increased");
     expect(gate.failures.join("\n")).toContain("average tool calls increased");
     expect(gate.failures.join("\n")).toContain("flaky rate");
+    expect(gate.failures.join("\n")).toContain("flaky task detected: task-a");
     expect(gate.failures.join("\n")).toContain("feedback success rate");
     expect(gate.failures.join("\n")).toContain("baseline passing task failed");
   });
@@ -90,6 +109,25 @@ function createRunResult(): EvalRunResult {
       verificationRuns: 1,
       flakyTasks: [],
       flakyRate: 0,
+      stablePassedTasks: ["task-a"],
+      alwaysFailedTasks: [],
+      taskStats: [
+        {
+          taskId: "task-a",
+          attempts: 1,
+          passedAttempts: 1,
+          passRate: 1,
+          flaky: false,
+          alwaysFailed: false,
+          averageTurns: 2,
+          turnsStdDev: 0,
+          averageToolCalls: 2,
+          toolCallsStdDev: 0,
+          averageWallTimeMs: 10,
+          wallTimeStdDev: 0,
+          failureReasons: [],
+        },
+      ],
       feedbackSuccessRate: null,
     },
     results: [

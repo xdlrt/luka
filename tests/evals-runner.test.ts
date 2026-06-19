@@ -119,6 +119,43 @@ describe("eval runner", () => {
     expect(result.reportPath).toBe(path.join(resultsDir, "latest-summary.md"));
   });
 
+  it("saves a baseline file for the current run", async () => {
+    const tasksDir = path.join(tempDir, "tasks");
+    const resultsDir = path.join(tempDir, "results");
+    const saveBaselinePath = path.join(tempDir, "baselines", "current.json");
+    await writeTask(tasksDir, "01.json", createTask("01-create-file"));
+    const runner: AgentRunner = vi.fn(async (_input, config, _tools, recorder) => {
+      await writeFile(
+        path.join(config.workingDirectory, "notes.txt"),
+        "done\n",
+        "utf8"
+      );
+      emitSuccessfulTrace(recorder);
+      return agentResult(true);
+    });
+
+    await runEvalSuite({
+      all: true,
+      tasksDir,
+      resultsDir,
+      saveBaselinePath,
+      runner,
+    });
+
+    const baseline = JSON.parse(await readFile(saveBaselinePath, "utf8")) as {
+      schemaVersion: number;
+      tasks: Array<{ taskId: string; toolCallCount: number; tracePath: string }>;
+    };
+    expect(baseline.schemaVersion).toBe(1);
+    expect(baseline.tasks).toEqual([
+      expect.objectContaining({
+        taskId: "01-create-file",
+        toolCallCount: 0,
+        tracePath: expect.stringMatching(/\.jsonl$/),
+      }),
+    ]);
+  });
+
   it("runs a selected task only", async () => {
     const tasksDir = path.join(tempDir, "tasks");
     const resultsDir = path.join(tempDir, "results");
@@ -176,12 +213,40 @@ describe("eval runner", () => {
     expect(result.results.map((item) => item.taskId)).toEqual(["02-other"]);
   });
 
-  it("supports repeat and marks flaky tasks", async () => {
+  it("supports repeat and reports per-task stability", async () => {
     const tasksDir = path.join(tempDir, "tasks");
     const resultsDir = path.join(tempDir, "results");
     await writeTask(tasksDir, "01.json", createTask("01-create-file"));
+    await writeTask(tasksDir, "02.json", createTask("02-stable"));
+    await writeTask(tasksDir, "03.json", createTask("03-failed"));
     const runner = vi
       .fn<AgentRunner>()
+      .mockImplementationOnce(async (_input, config, _tools, recorder) => {
+        await writeFile(
+          path.join(config.workingDirectory, "notes.txt"),
+          "done\n",
+          "utf8"
+        );
+        emitSuccessfulTrace(recorder);
+        return agentResult(true);
+      })
+      .mockImplementationOnce(async (_input, config, _tools, recorder) => {
+        await writeFile(
+          path.join(config.workingDirectory, "notes.txt"),
+          "done\n",
+          "utf8"
+        );
+        emitSuccessfulTrace(recorder);
+        return agentResult(true);
+      })
+      .mockImplementationOnce(async (_input, _config, _tools, recorder) => {
+        emitSuccessfulTrace(recorder);
+        return agentResult(true);
+      })
+      .mockImplementationOnce(async (_input, _config, _tools, recorder) => {
+        emitSuccessfulTrace(recorder);
+        return agentResult(true);
+      })
       .mockImplementationOnce(async (_input, config, _tools, recorder) => {
         await writeFile(
           path.join(config.workingDirectory, "notes.txt"),
@@ -204,8 +269,37 @@ describe("eval runner", () => {
       runner,
     });
 
-    expect(result.results).toHaveLength(2);
+    expect(result.results).toHaveLength(6);
     expect(result.summary.flakyTasks).toEqual(["01-create-file"]);
+    expect(result.summary.stablePassedTasks).toEqual(["02-stable"]);
+    expect(result.summary.alwaysFailedTasks).toEqual(["03-failed"]);
+    expect(result.summary.flakyRate).toBe(1 / 3);
+    expect(result.summary.taskStats).toEqual([
+      expect.objectContaining({
+        taskId: "01-create-file",
+        attempts: 2,
+        passedAttempts: 1,
+        passRate: 0.5,
+        flaky: true,
+        alwaysFailed: false,
+      }),
+      expect.objectContaining({
+        taskId: "02-stable",
+        attempts: 2,
+        passedAttempts: 2,
+        passRate: 1,
+        flaky: false,
+        alwaysFailed: false,
+      }),
+      expect.objectContaining({
+        taskId: "03-failed",
+        attempts: 2,
+        passedAttempts: 0,
+        passRate: 0,
+        flaky: false,
+        alwaysFailed: true,
+      }),
+    ]);
   });
 
   it("records eval task start and end events", async () => {
