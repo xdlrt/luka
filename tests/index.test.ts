@@ -49,6 +49,8 @@ describe("parseCliArgs", () => {
       maxRetries: undefined,
       verbose: false,
       hooksConfigPath: undefined,
+      sessionId: undefined,
+      resumeSessionId: undefined,
       initialInput: "edit file",
     });
   });
@@ -60,6 +62,8 @@ describe("parseCliArgs", () => {
       maxRetries: undefined,
       verbose: false,
       hooksConfigPath: undefined,
+      sessionId: undefined,
+      resumeSessionId: undefined,
       initialInput: "run tests",
     });
   });
@@ -71,6 +75,8 @@ describe("parseCliArgs", () => {
       maxRetries: undefined,
       verbose: false,
       hooksConfigPath: undefined,
+      sessionId: undefined,
+      resumeSessionId: undefined,
       initialInput: "hello agent",
     });
   });
@@ -82,6 +88,8 @@ describe("parseCliArgs", () => {
       maxRetries: undefined,
       verbose: false,
       hooksConfigPath: undefined,
+      sessionId: undefined,
+      resumeSessionId: undefined,
       initialInput: "",
     });
   });
@@ -93,6 +101,8 @@ describe("parseCliArgs", () => {
       maxRetries: undefined,
       verbose: false,
       hooksConfigPath: undefined,
+      sessionId: undefined,
+      resumeSessionId: undefined,
       initialInput: "fix bug",
     });
   });
@@ -110,6 +120,8 @@ describe("parseCliArgs", () => {
       maxRetries: 2,
       verbose: false,
       hooksConfigPath: undefined,
+      sessionId: undefined,
+      resumeSessionId: undefined,
       initialInput: "fix bug",
     });
   });
@@ -133,6 +145,8 @@ describe("parseCliArgs", () => {
       maxRetries: undefined,
       verbose: true,
       hooksConfigPath: undefined,
+      sessionId: undefined,
+      resumeSessionId: undefined,
       initialInput: "fix",
     });
     expect(parseCliArgs(["-v", "fix"])).toEqual({
@@ -141,6 +155,8 @@ describe("parseCliArgs", () => {
       maxRetries: undefined,
       verbose: true,
       hooksConfigPath: undefined,
+      sessionId: undefined,
+      resumeSessionId: undefined,
       initialInput: "fix",
     });
   });
@@ -152,6 +168,8 @@ describe("parseCliArgs", () => {
       maxRetries: undefined,
       verbose: false,
       hooksConfigPath: "hooks.json",
+      sessionId: undefined,
+      resumeSessionId: undefined,
       initialInput: "run",
     });
   });
@@ -159,6 +177,30 @@ describe("parseCliArgs", () => {
   it("throws when --hooks-config has no value", () => {
     expect(() => parseCliArgs(["--hooks-config"])).toThrow(
       /--hooks-config requires a value/
+    );
+  });
+
+  it("captures session flags without sending them as user input", () => {
+    expect(
+      parseCliArgs(["--session", "s1", "--resume", "s0", "continue", "work"])
+    ).toEqual({
+      autoApprove: false,
+      testCommand: undefined,
+      maxRetries: undefined,
+      verbose: false,
+      hooksConfigPath: undefined,
+      sessionId: "s1",
+      resumeSessionId: "s0",
+      initialInput: "continue work",
+    });
+  });
+
+  it("throws when session flags have no value", () => {
+    expect(() => parseCliArgs(["--session"])).toThrow(
+      /--session requires a value/
+    );
+    expect(() => parseCliArgs(["--resume"])).toThrow(
+      /--resume requires a value/
     );
   });
 });
@@ -469,5 +511,22 @@ describe("handleUserInput", () => {
 
     expect(shouldContinue).toBe(true);
     expect(writeLine).toHaveBeenCalledWith("Error: boom");
+  });
+
+  it("prints a clear error when resume session is missing", async () => {
+    const writeLine = vi.fn();
+
+    await handleUserInput(
+      "next",
+      baseConfig,
+      new ToolRegistry(),
+      writeLine,
+      undefined,
+      { resumeSessionId: "missing-session" }
+    );
+
+    expect(writeLine).toHaveBeenCalledWith(
+      expect.stringContaining("Error:")
+    );
   });
 });

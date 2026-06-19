@@ -92,6 +92,35 @@ describe("runAgentLoop", () => {
     expect(harness.executeTool).not.toHaveBeenCalled();
   });
 
+  it("saves a final checkpoint when the model stops without tools", async () => {
+    const { client } = createClient([textResponse("hello answer")]);
+    const tools = new ToolRegistry();
+    const checkpoint = vi.fn(async () => undefined);
+
+    await runAgentLoop(
+      "hi",
+      baseConfig,
+      tools,
+      client,
+      createHarness(),
+      undefined,
+      undefined,
+      undefined,
+      { checkpoint }
+    );
+
+    expect(checkpoint).toHaveBeenCalledWith(
+      expect.objectContaining({
+        messages: [
+          expect.objectContaining({ role: "system" }),
+          { role: "user", content: "hi" },
+          { role: "assistant", content: "hello answer" },
+        ],
+        todos: [],
+      })
+    );
+  });
+
   it("delegates a tool call to the harness, feeds the result back, then finishes", async () => {
     const { client } = createClient([
       toolCallResponse([{ id: "call-1", name: "echo", args: { x: 1 } }]),
@@ -145,6 +174,42 @@ describe("runAgentLoop", () => {
     expect(assistantMessage?.tool_calls?.[0]?.id).toBe("call-xyz");
     expect(toolMessage?.tool_call_id).toBe("call-xyz");
     expect(toolMessage?.content).toBe("echo-output");
+  });
+
+  it("checkpoints only after assistant tool calls are paired with tool messages", async () => {
+    const { client } = createClient([
+      toolCallResponse([{ id: "call-xyz", name: "echo", args: {} }]),
+      textResponse("ok"),
+    ]);
+    const tools = new ToolRegistry();
+    tools.register(createTool("echo", "echo-output"));
+    const checkpoint = vi.fn(async () => undefined);
+
+    await runAgentLoop(
+      "go",
+      baseConfig,
+      tools,
+      client,
+      createHarness(vi.fn(async () => ({ content: "echo-output" }))),
+      undefined,
+      undefined,
+      undefined,
+      { checkpoint }
+    );
+
+    const firstCheckpoint = checkpoint.mock.calls[0]?.[0];
+    expect(firstCheckpoint?.messages).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          role: "assistant",
+          tool_calls: [expect.objectContaining({ id: "call-xyz" })],
+        }),
+        { role: "tool", tool_call_id: "call-xyz", content: "echo-output" },
+      ])
+    );
+    expect(firstCheckpoint?.toolSummaries).toEqual([
+      { toolName: "echo", content: "echo-output" },
+    ]);
   });
 
   it("injects current todo state into the next model request", async () => {
@@ -264,6 +329,71 @@ describe("runAgentLoop", () => {
     expect(result.totalTokens).toBe(4);
   });
 
+  it("saves a final checkpoint when maxTurns is reached", async () => {
+    const { client } = createClient([
+      toolCallResponse([{ id: "c1", name: "echo", args: {} }]),
+    ]);
+    const tools = new ToolRegistry();
+    tools.register(createTool("echo", "out"));
+    const checkpoint = vi.fn(async () => undefined);
+
+    await runAgentLoop(
+      "loop",
+      { ...baseConfig, maxTurns: 1 },
+      tools,
+      client,
+      createHarness(),
+      undefined,
+      undefined,
+      undefined,
+      { checkpoint }
+    );
+
+    expect(checkpoint).toHaveBeenCalledWith(
+      expect.objectContaining({
+        messages: expect.arrayContaining([
+          { role: "tool", tool_call_id: "c1", content: "echo-output" },
+        ]),
+      })
+    );
+  });
+
+  it("warns without failing when checkpoint persistence fails", async () => {
+    const { client } = createClient([textResponse("done")]);
+    const logger = {
+      debug: vi.fn(),
+      info: vi.fn(),
+      warn: vi.fn(),
+      error: vi.fn(),
+    };
+    const checkpointWarning = vi.fn();
+
+    const result = await runAgentLoop(
+      "hi",
+      baseConfig,
+      new ToolRegistry(),
+      client,
+      createHarness(),
+      logger,
+      undefined,
+      undefined,
+      {
+        checkpoint: vi.fn(async () => {
+          throw new Error("disk full");
+        }),
+        checkpointWarning,
+      }
+    );
+
+    expect(result.success).toBe(true);
+    expect(logger.warn).toHaveBeenCalledWith(
+      "[session] checkpoint failed: disk full"
+    );
+    expect(checkpointWarning).toHaveBeenCalledWith(
+      "[session] checkpoint failed: disk full"
+    );
+  });
+
   it("logs approximate context size in verbose mode", async () => {
     const { client } = createClient([textResponse("done")]);
     const tools = new ToolRegistry();
@@ -327,6 +457,43 @@ describe("runAgentLoop", () => {
     ]);
     expect(logger.info).toHaveBeenCalledWith(
       expect.stringMatching(/^\[CONTEXT\] Compressing: \d+ → \d+ tokens$/)
+    );
+  });
+
+  it("records compact boundaries in checkpoints", async () => {
+    const { client } = createClient([textResponse("done")]);
+    const checkpoint = vi.fn(async () => undefined);
+    const compressor = createCompressor({
+      shouldCompress: true,
+      compressedMessages: new MessageHistory([
+        { role: "system", content: "system" },
+        { role: "assistant", content: "Context summary:\nold work" },
+        { role: "user", content: "latest task" },
+      ]),
+    });
+
+    await runAgentLoop(
+      "hi",
+      baseConfig,
+      new ToolRegistry(),
+      client,
+      createHarness(),
+      undefined,
+      compressor,
+      undefined,
+      { checkpoint }
+    );
+
+    expect(checkpoint).toHaveBeenCalledWith(
+      expect.objectContaining({
+        compactBoundaries: [
+          expect.objectContaining({
+            turn: 1,
+            beforeTokens: expect.any(Number),
+            afterTokens: expect.any(Number),
+          }),
+        ],
+      })
     );
   });
 
@@ -436,6 +603,39 @@ describe("runAgentLoop", () => {
           message.content === "[verification] All tests passed"
       )
     ).toBe(true);
+  });
+
+  it("stores verification summaries in checkpoints", async () => {
+    const { client } = createClient([
+      toolCallResponse([
+        { id: "call-1", name: "edit_file", args: { path: "a.ts" } },
+      ]),
+      textResponse("done"),
+    ]);
+    const tools = new ToolRegistry();
+    tools.register(createTool("edit_file", "ok"));
+    const checkpoint = vi.fn(async () => undefined);
+
+    await runAgentLoop(
+      "fix",
+      baseConfig,
+      tools,
+      client,
+      createHarness(
+        vi.fn(async () => ({
+          content: "ok",
+          verificationMessage: "[verification] All tests passed",
+        }))
+      ),
+      undefined,
+      undefined,
+      undefined,
+      { checkpoint }
+    );
+
+    expect(checkpoint.mock.calls[0]?.[0].verificationSummaries).toEqual([
+      { toolName: "edit_file", message: "[verification] All tests passed" },
+    ]);
   });
 
   it("marks turn boundaries on the harness", async () => {

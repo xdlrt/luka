@@ -13,6 +13,12 @@ import type { EventRecorderLike } from "./observability/recorder.js";
 import type { TodoManager } from "./planning/todo.js";
 import type { ToolRegistry } from "./tools/index.js";
 import type { Message } from "./types.js";
+import type {
+  CompactBoundary,
+  SessionCheckpoint,
+  ToolSummary,
+  VerificationSummary,
+} from "./session-store.js";
 
 export interface AgentResult {
   finalMessage: string;
@@ -21,6 +27,12 @@ export interface AgentResult {
   success: boolean;
   totalTokens: number;
   todoDisplay?: string;
+}
+
+export interface AgentLoopOptions {
+  initialMessages?: Message[];
+  checkpoint?: (checkpoint: SessionCheckpoint) => Promise<void>;
+  checkpointWarning?: (message: string) => void;
 }
 
 export async function runAgentLoop(
@@ -33,17 +45,20 @@ export async function runAgentLoop(
   compressor: HistoryCompressor = new ContextCompressor(
     client as ContextCompressorClient
   ),
-  recorder?: EventRecorderLike
+  recorder?: EventRecorderLike,
+  options: AgentLoopOptions = {}
 ): Promise<AgentResult> {
   const activeHarness =
     harness ?? Harness.fromAppConfig(config, { logger, recorder });
   const todoManager = tools.getTodoManager();
-  const history = new MessageHistory([
-    { role: "system", content: SYSTEM_PROMPT },
-    { role: "user", content: userInput },
-  ]);
+  const history = new MessageHistory(
+    createInitialMessages(userInput, options.initialMessages)
+  );
   const toolsCalled: string[] = [];
   const toolDefinitions = tools.getToolDefinitions();
+  const toolSummaries: ToolSummary[] = [];
+  const verificationSummaries: VerificationSummary[] = [];
+  const compactBoundaries: CompactBoundary[] = [];
 
   let lastText = "";
   let lastModelAction = "";
@@ -58,8 +73,23 @@ export async function runAgentLoop(
       const compressedHistory = await compressor.compress(history);
       const afterTokens = compressedHistory.getApproxTokenCount();
       history.replace(compressedHistory.getMessages());
+      compactBoundaries.push({
+        turn,
+        beforeTokens,
+        afterTokens,
+        createdAt: new Date().toISOString(),
+      });
       logger.info(
         `[CONTEXT] Compressing: ${beforeTokens} → ${afterTokens} tokens`
+      );
+      await saveCheckpoint(
+        options,
+        history,
+        todoManager,
+        toolSummaries,
+        verificationSummaries,
+        compactBoundaries,
+        logger
       );
     }
     const messages = withTodoContext(history.getMessages(), todoManager);
@@ -103,6 +133,15 @@ export async function runAgentLoop(
     });
 
     if (parsed.toolCalls.length === 0) {
+      await saveCheckpoint(
+        options,
+        history,
+        todoManager,
+        toolSummaries,
+        verificationSummaries,
+        compactBoundaries,
+        logger
+      );
       logger.info(`[TURN ${turn}] no tool calls; finishing`);
       recorder?.emit("Stop", {
         success: true,
@@ -133,12 +172,26 @@ export async function runAgentLoop(
         tool_call_id: call.id,
         content: result.content,
       });
+      toolSummaries.push({ toolName: call.name, content: result.content });
       if (result.verificationMessage !== undefined) {
         history.append({
           role: "assistant",
           content: result.verificationMessage,
         });
+        verificationSummaries.push({
+          toolName: call.name,
+          message: result.verificationMessage,
+        });
       }
+      await saveCheckpoint(
+        options,
+        history,
+        todoManager,
+        toolSummaries,
+        verificationSummaries,
+        compactBoundaries,
+        logger
+      );
     }
     activeHarness.endTurn();
   }
@@ -150,6 +203,15 @@ export async function runAgentLoop(
     finalState: "max_turns",
     totalTokens,
   });
+  await saveCheckpoint(
+    options,
+    history,
+    todoManager,
+    toolSummaries,
+    verificationSummaries,
+    compactBoundaries,
+    logger
+  );
   return {
     finalMessage: lastText,
     turnsUsed: config.maxTurns,
@@ -158,6 +220,52 @@ export async function runAgentLoop(
     totalTokens,
     todoDisplay: getTodoDisplay(todoManager),
   };
+}
+
+function createInitialMessages(
+  userInput: string,
+  initialMessages: Message[] | undefined
+): Message[] {
+  if (initialMessages === undefined || initialMessages.length === 0) {
+    return [
+      { role: "system", content: SYSTEM_PROMPT },
+      { role: "user", content: userInput },
+    ];
+  }
+  const messages = [...initialMessages];
+  if (messages[0]?.role !== "system") {
+    messages.unshift({ role: "system", content: SYSTEM_PROMPT });
+  }
+  if (userInput.trim() !== "") {
+    messages.push({ role: "user", content: userInput });
+  }
+  return messages;
+}
+
+async function saveCheckpoint(
+  options: AgentLoopOptions,
+  history: MessageHistory,
+  todoManager: TodoManager | undefined,
+  toolSummaries: ToolSummary[],
+  verificationSummaries: VerificationSummary[],
+  compactBoundaries: CompactBoundary[],
+  logger: Logger
+): Promise<void> {
+  if (options.checkpoint === undefined) return;
+  try {
+    await options.checkpoint({
+      messages: history.getMessages(),
+      todos: todoManager?.getAll() ?? [],
+      toolSummaries: toolSummaries.map((item) => ({ ...item })),
+      verificationSummaries: verificationSummaries.map((item) => ({ ...item })),
+      compactBoundaries: compactBoundaries.map((item) => ({ ...item })),
+    });
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error);
+    const warning = `[session] checkpoint failed: ${message}`;
+    logger.warn(warning);
+    options.checkpointWarning?.(warning);
+  }
 }
 
 function summarizeModelAction(toolNames: string[], text: string): string {
